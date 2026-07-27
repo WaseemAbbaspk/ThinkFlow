@@ -36,6 +36,10 @@ describe('detectGaps', () => {
     const p = seed(); p.tasks[0].tracesTo = ['US-999'];
     expect(detectGaps(p).map(g => g.kind)).toContain('dangling-link');
   });
+  it('flags a dangling link (test verifies missing criterion)', () => {
+    const p = seed(); p.testing.tests[0].verifies = 'AC-9.9';
+    expect(detectGaps(p).map(g => g.kind)).toContain('dangling-link');
+  });
 });
 
 describe('buildMatrix', () => {
@@ -46,5 +50,15 @@ describe('buildMatrix', () => {
     expect(row.goalId).toBe('GOAL-1');
     expect(row.taskIds).toContain('TASK-1');
     expect(row.testIds).toContain('TEST-1');
+  });
+  it('creates matrix row for story with zero criteria', () => {
+    const p = emptyProject('t');
+    p.goals.push({ id: 'GOAL-1', text: 'g', metric: 'm' });
+    p.requirements.stories.push({ id: 'US-1', role: 'u', want: 'w', benefit: 'b', priority: 'Must', servesGoalId: 'GOAL-1' });
+    p.tasks.push({ id: 'TASK-1', title: 't', tracesTo: ['US-1'], dependsOn: [], goal: '', contextForAgent: '', acceptance: [], outOfScope: '', status: 'Todo' });
+    const rows = buildMatrix(p);
+    const row = rows.find(r => r.storyId === 'US-1')!;
+    expect(row.criterionId).toBeNull();
+    expect(row.taskIds).toContain('TASK-1');
   });
 });
