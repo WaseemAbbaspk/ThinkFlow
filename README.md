@@ -89,6 +89,27 @@ Full write-up: [`docs/principles/`](docs/principles/principles.md).
 
 ---
 
+## ThinkFlow Studio (the companion app)
+
+**[ThinkFlow Studio](https://waseemabbaspk.github.io/ThinkFlow/)** is an interactive, entirely
+client-side web app that walks you through the five core stages —
+**Vision → Requirements → Architecture → Tasks → Testing** — while keeping the traceability
+chain honest for you. It auto-assigns IDs (`US-1`, `AC-1.1`, `ADR-2`, `TASK-7`, `TEST-12`), lets
+you link artifacts upstream, and renders a **live traceability matrix** that flags gaps (an
+untested criterion, an orphan task, a goalless story). Your project auto-saves to the browser's
+local storage, and you can export the whole thing as Markdown docs (a `.zip`) or a portable
+`.json` you can re-import later.
+
+- **Live app:** https://waseemabbaspk.github.io/ThinkFlow/ — the repository root is the
+  methodology; this Pages site is the Studio app.
+- **Source:** [`app/`](app/) (React + Vite + TypeScript, no backend).
+
+The app deploys automatically from [`app/`](app/) to GitHub Pages on every push to `main`
+(see [`.github/workflows/deploy-studio.yml`](.github/workflows/deploy-studio.yml)). This requires
+a **one-time** repo setting: **Settings → Pages → Build and deployment → Source = "GitHub Actions"**.
+
+---
+
 ## Project status
 
 ThinkFlow is under active construction. **Milestone 1 (this release) is a "foundation
