@@ -35,7 +35,7 @@ export function TasksForm() {
 
             return (
               <div>
-                <div>{task.id}</div>
+                <div className="id-tag">{task.id}</div>
                 <TextField
                   label="Title"
                   value={task.title}

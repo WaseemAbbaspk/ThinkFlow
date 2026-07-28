@@ -155,7 +155,7 @@ export function ArchitectureForm() {
           onRemove={i => replaceArch({ adrs: architecture.adrs.filter((_, idx) => idx !== i) })}
           renderItem={(adr) => (
             <div>
-              <div>{adr.id}</div>
+              <div className="id-tag">{adr.id}</div>
               <TextField
                 label="Title"
                 value={adr.title}

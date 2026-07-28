@@ -46,18 +46,24 @@ function Shell() {
 
   return (
     <div className="app-shell">
-      {!saveHealthy && (
-        <div className="storage-warning" role="status">
-          Your work could not be saved to this browser. Export your project to avoid losing it.
+      <aside className="sidebar-col">
+        <div className="brand">
+          <span className="brand-name">ThinkFlow Studio</span>
+          <span className="brand-tag">REV-01</span>
         </div>
-      )}
-      <TextField
-        label="Project name"
-        value={state.project.meta.name}
-        onChange={v => dispatch({ type: 'PATCH_META', patch: { name: v } })}
-      />
-      <Sidebar />
+        <TextField
+          label="Project name"
+          value={state.project.meta.name}
+          onChange={v => dispatch({ type: 'PATCH_META', patch: { name: v } })}
+        />
+        <Sidebar />
+      </aside>
       <main>
+        {!saveHealthy && (
+          <div className="storage-warning" role="status">
+            Your work could not be saved to this browser. Export your project to avoid losing it.
+          </div>
+        )}
         {state.view === 'vision' && <VisionForm />}
         {state.view === 'requirements' && <RequirementsForm />}
         {state.view === 'architecture' && <ArchitectureForm />}
@@ -75,7 +81,11 @@ function App() {
   const [fresh, setFresh] = useState(false);
 
   if (loaded.ok === false && !fresh) {
-    return <RecoveryBanner reason={loaded.reason} onFresh={() => setFresh(true)} />;
+    return (
+      <div className="recovery-page">
+        <RecoveryBanner reason={loaded.reason} onFresh={() => setFresh(true)} />
+      </div>
+    );
   }
 
   const preload: Project | undefined = !fresh && loaded.ok === true ? loaded.project : undefined;

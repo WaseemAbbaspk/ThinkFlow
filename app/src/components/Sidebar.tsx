@@ -34,7 +34,7 @@ export function Sidebar() {
             <li key={view}>
               <button
                 type="button"
-                className={active ? 'active' : undefined}
+                className={[active && 'active', hasGap && 'gappy'].filter(Boolean).join(' ') || undefined}
                 aria-current={active ? 'page' : undefined}
                 onClick={() => dispatch({ type: 'SET_VIEW', view })}
               >

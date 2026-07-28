@@ -37,7 +37,7 @@ export function RequirementsForm() {
           onRemove={i => replace({ goals: project.goals.filter((_, idx) => idx !== i) })}
           renderItem={(item, i) => (
             <>
-              <div>{item.id}</div>
+              <div className="id-tag">{item.id}</div>
               <TextField
                 label="Text"
                 value={item.text}
@@ -75,7 +75,7 @@ export function RequirementsForm() {
           }}
           renderItem={(story) => (
             <div>
-              <div>{story.id}</div>
+              <div className="id-tag">{story.id}</div>
               <TextField
                 label="Role"
                 value={story.role}
@@ -125,7 +125,7 @@ export function RequirementsForm() {
                 }}
                 renderItem={(criterion) => (
                   <div>
-                    <div>{criterion.id}</div>
+                    <div className="id-tag">{criterion.id}</div>
                     <TextField
                       label="Text"
                       value={criterion.text}
@@ -148,7 +148,7 @@ export function RequirementsForm() {
           onRemove={i => replaceRequirements({ nfrs: requirements.nfrs.filter((_, idx) => idx !== i) })}
           renderItem={(item, i) => (
             <>
-              <div>{item.id}</div>
+              <div className="id-tag">{item.id}</div>
               <TextField
                 label="Name"
                 value={item.name}

@@ -54,7 +54,7 @@ export function TestingForm() {
           onRemove={i => dispatch({ type: 'DELETE_TEST', id: testing.tests[i].id })}
           renderItem={(test) => (
             <div>
-              <div>{test.id}</div>
+              <div className="id-tag">{test.id}</div>
               <TextField
                 label="Description"
                 value={test.description}
