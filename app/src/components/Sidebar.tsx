@@ -1,4 +1,3 @@
-import React from 'react';
 import { useProject, type View } from '../state/projectStore';
 import { detectGaps, type Gap } from '../model/traceability';
 

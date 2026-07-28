@@ -20,6 +20,7 @@ export type Action =
   | { type: 'SET_VIEW'; view: View }
   | { type: 'REPLACE_PROJECT'; project: Project }
   | { type: 'PATCH_VISION'; patch: Partial<Project['vision']> }
+  | { type: 'PATCH_META'; patch: Partial<Project['meta']> }
   | { type: 'ADD_STORY' } | { type: 'UPDATE_STORY'; id: string; patch: Partial<UserStory> } | { type: 'DELETE_STORY'; id: string }
   | { type: 'ADD_CRITERION'; storyId: string } | { type: 'UPDATE_CRITERION'; id: string; patch: Partial<Criterion> } | { type: 'DELETE_CRITERION'; id: string }
   | { type: 'ADD_GOAL' } | { type: 'ADD_NFR' } | { type: 'ADD_ADR' }
@@ -36,6 +37,8 @@ export function reducer(state: State, action: Action): State {
     case 'REPLACE_PROJECT': return { ...state, project: action.project };
     case 'PATCH_VISION':
       return { ...state, project: touch({ ...p, vision: { ...p.vision, ...action.patch } }) };
+    case 'PATCH_META':
+      return { ...state, project: touch({ ...p, meta: { ...p.meta, ...action.patch } }) };
     case 'ADD_STORY': {
       const { id, counters } = nextId(p.meta.counters, 'US');
       const story: UserStory = { id, role: '', want: '', benefit: '', priority: 'Must', servesGoalId: null };

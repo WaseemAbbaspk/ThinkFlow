@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { it, expect } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import { ProjectProvider } from '../state/projectStore';
 import { TraceabilityView } from './TraceabilityView';

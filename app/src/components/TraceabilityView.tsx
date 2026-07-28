@@ -1,4 +1,3 @@
-import React from 'react';
 import { useProject } from '../state/projectStore';
 import { buildMatrix, detectGaps, type Gap } from '../model/traceability';
 import type { Project } from '../model/types';

@@ -1,4 +1,3 @@
-import React from 'react';
 import { useProject } from '../state/projectStore';
 import { TextField, TextArea, RepeatableList } from '../components/inputs';
 import type { Problem, Beneficiary, AssumptionRisk } from '../model/types';

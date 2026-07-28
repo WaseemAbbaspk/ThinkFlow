@@ -1,4 +1,3 @@
-import React from 'react';
 import { useProject } from '../state/projectStore';
 import { TextField, TextArea, SelectField, LinkSelect, RepeatableList } from '../components/inputs';
 import type { Task, TaskStatus } from '../model/types';

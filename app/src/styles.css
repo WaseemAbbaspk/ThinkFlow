@@ -1,0 +1,5 @@
+/* Minimal baseline styles — full styling pass is Task 22. */
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
