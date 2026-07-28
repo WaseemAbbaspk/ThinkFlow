@@ -37,14 +37,20 @@ function RecoveryBanner({ reason, onFresh }: { reason: string; onFresh: () => vo
 
 function Shell() {
   const { state, dispatch } = useProject();
+  const [saveHealthy, setSaveHealthy] = useState(true);
 
   useEffect(() => {
-    const id = setTimeout(() => saveProject(state.project), 500);
+    const id = setTimeout(() => setSaveHealthy(saveProject(state.project)), 500);
     return () => clearTimeout(id);
   }, [state.project]);
 
   return (
     <div className="app-shell">
+      {!saveHealthy && (
+        <div className="storage-warning" role="status">
+          Your work could not be saved to this browser. Export your project to avoid losing it.
+        </div>
+      )}
       <TextField
         label="Project name"
         value={state.project.meta.name}

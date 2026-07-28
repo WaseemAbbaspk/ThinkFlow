@@ -8,10 +8,14 @@ const PRIORITY_OPTIONS = [
   { value: 'Could', label: 'Could' },
 ];
 
+function confirmDelete(message: string): boolean {
+  return window.confirm(message);
+}
+
 export function RequirementsForm() {
   const { state, dispatch } = useProject();
   const project = state.project;
-  const { requirements } = project;
+  const { requirements, tasks, testing } = project;
 
   function replace(patch: Partial<typeof project>) {
     dispatch({ type: 'REPLACE_PROJECT', project: { ...project, ...patch } });
@@ -59,7 +63,16 @@ export function RequirementsForm() {
           items={requirements.stories}
           addLabel="Add story"
           onAdd={() => dispatch({ type: 'ADD_STORY' })}
-          onRemove={i => dispatch({ type: 'DELETE_STORY', id: requirements.stories[i].id })}
+          onRemove={i => {
+            const story = requirements.stories[i];
+            const dependentCriteria = requirements.criteria.filter(c => c.storyId === story.id);
+            const dependentTasks = tasks.filter(t => t.tracesTo.includes(story.id));
+            if (dependentCriteria.length > 0 || dependentTasks.length > 0) {
+              const message = `Delete ${story.id}? This also removes ${dependentCriteria.length} criteria and unlinks ${dependentTasks.length} tasks.`;
+              if (!confirmDelete(message)) return;
+            }
+            dispatch({ type: 'DELETE_STORY', id: story.id });
+          }}
           renderItem={(story) => (
             <div>
               <div>{story.id}</div>
@@ -101,7 +114,14 @@ export function RequirementsForm() {
                 onAdd={() => dispatch({ type: 'ADD_CRITERION', storyId: story.id })}
                 onRemove={i => {
                   const storyCriteria = requirements.criteria.filter(c => c.storyId === story.id);
-                  dispatch({ type: 'DELETE_CRITERION', id: storyCriteria[i].id });
+                  const criterion = storyCriteria[i];
+                  const dependentTasks = tasks.filter(t => t.tracesTo.includes(criterion.id));
+                  const dependentTests = testing.tests.filter(t => t.verifies === criterion.id);
+                  if (dependentTasks.length > 0 || dependentTests.length > 0) {
+                    const message = `Delete ${criterion.id}? This unlinks ${dependentTasks.length} tasks and ${dependentTests.length} tests.`;
+                    if (!confirmDelete(message)) return;
+                  }
+                  dispatch({ type: 'DELETE_CRITERION', id: criterion.id });
                 }}
                 renderItem={(criterion) => (
                   <div>

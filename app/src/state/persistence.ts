@@ -3,9 +3,9 @@ import { serialize, parse } from '../export/project';
 
 export const STORAGE_KEY = 'thinkflow.studio.project.v1';
 
-export function saveProject(p: Project): void {
-  try { localStorage.setItem(STORAGE_KEY, serialize(p)); }
-  catch { /* storage full/unavailable — caller surfaces a warning */ }
+export function saveProject(p: Project): boolean {
+  try { localStorage.setItem(STORAGE_KEY, serialize(p)); return true; }
+  catch { return false; /* storage full/unavailable — caller surfaces a warning */ }
 }
 export function loadProject():
   { ok: true; project: Project } | { ok: false; reason: string } | { ok: 'empty' } {
