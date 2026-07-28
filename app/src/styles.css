@@ -1,0 +1,523 @@
+/* ThinkFlow Studio — "engineering ledger / blueprint" styling pass.
+   Precision instrument for tracing a spec from Vision to Tests. Quiet, exact, technical. */
+
+:root {
+  --paper:      #F5F7F9;  /* app canvas (cool paper) */
+  --surface:    #FFFFFF;  /* cards / inputs / panels */
+  --ink:        #1B2430;  /* primary text (cool near-black) */
+  --muted:      #5B6672;  /* secondary text, captions */
+  --line:       #E2E7EC;  /* hairline borders / dividers */
+  --accent:     #2450C8;  /* blueprint blue: active nav, links, focus, primary buttons */
+  --accent-soft:#E9EEFC;  /* active-nav background wash */
+  --warn:       #B25E00;  /* amber: gap markers, storage warning */
+  --warn-soft:  #FBEFD9;
+  --ok:         #1F7A4D;  /* green: "No gaps" success text */
+
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper:      #12161C;
+    --surface:    #1A2029;
+    --ink:        #E7ECF2;
+    --muted:      #93A0AF;
+    --line:       #2B333F;
+    --accent:     #6E93F0;
+    --accent-soft:#212C47;
+    --warn:       #E0A356;
+    --warn-soft:  #3A2E17;
+    --ok:         #4FC28A;
+  }
+}
+
+/* ---------- Reset / base ---------- */
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 0 0 12px;
+}
+
+p {
+  margin: 0 0 10px;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+a {
+  color: var(--accent);
+}
+
+/* Visible focus ring everywhere; never remove without replacement */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* ---------- App shell / two-column layout ---------- */
+.app-shell {
+  display: grid;
+  grid-template-columns: 268px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar-col {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 16px;
+  gap: 20px;
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.brand-name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.brand-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+main {
+  min-width: 0;
+  padding: 32px;
+  overflow-y: auto;
+}
+
+main > * {
+  max-width: 72ch;
+}
+
+/* ---------- Recovery page ---------- */
+.recovery-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: var(--paper);
+}
+
+.recovery-banner {
+  max-width: 480px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 24px;
+  text-align: left;
+}
+
+.recovery-banner button {
+  margin-right: 8px;
+}
+
+/* ---------- Storage warning ---------- */
+.storage-warning {
+  background: var(--warn-soft);
+  color: var(--warn);
+  border: 1px solid var(--warn);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 20px;
+  font-size: 13.5px;
+  max-width: 72ch;
+}
+
+/* ---------- Sidebar nav: numbered lifecycle rail ---------- */
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  counter-reset: step;
+}
+
+.sidebar li {
+  position: relative;
+}
+
+.sidebar li:nth-child(-n+5) {
+  counter-increment: step;
+  padding-left: 8px;
+}
+
+/* vertical rail connecting the five numbered nodes (timeline trick:
+   full-height line per item, trimmed to a half-line at the first/last node) */
+.sidebar li:nth-child(-n+5)::after {
+  content: '';
+  position: absolute;
+  left: 19px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
+  z-index: 0;
+}
+
+.sidebar li:nth-child(1)::after {
+  top: 50%;
+}
+
+.sidebar li:nth-child(5)::after {
+  bottom: 50%;
+}
+
+.sidebar li:nth-child(-n+5) button {
+  position: relative;
+  padding-left: 34px;
+}
+
+.sidebar li:nth-child(-n+5) button::before {
+  content: counter(step, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.sidebar li:nth-child(-n+5) button.gappy::before {
+  background: var(--warn-soft);
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.sidebar li:nth-child(n+6) {
+  padding-left: 8px;
+}
+
+.sidebar li:nth-child(6) {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.sidebar button {
+  width: 100%;
+  display: block;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13.5px;
+  color: var(--ink);
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.sidebar button:hover {
+  background: var(--paper);
+}
+
+.sidebar button.active,
+.sidebar button[aria-current="page"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.sidebar button.active::before,
+.sidebar button[aria-current="page"]::before {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--surface);
+}
+
+/* warn glyph */
+.sidebar button span[aria-hidden="true"] {
+  color: var(--warn);
+}
+
+/* ---------- Sections ---------- */
+section {
+  margin-bottom: 28px;
+}
+
+section h3 {
+  font-size: 17px;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+h4 {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 20px 0 10px;
+}
+
+/* ---------- Fields ---------- */
+.field {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+}
+
+.field label {
+  color: var(--muted);
+  font-size: 12.5px;
+  margin-bottom: 4px;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.field textarea {
+  min-height: 80px;
+  resize: vertical;
+  font-family: var(--font-ui);
+}
+
+.field select[multiple] {
+  min-height: 96px;
+}
+
+.field input:focus-visible,
+.field select:focus-visible,
+.field textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+/* ---------- ID chips ---------- */
+.id-tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 1px 6px;
+  margin-bottom: 10px;
+}
+
+.id-tag:hover {
+  color: var(--ink);
+}
+
+/* ---------- Repeatable lists ---------- */
+.repeatable-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.repeatable-list-item {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+
+.repeatable-list-item > button {
+  margin-top: 4px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 12.5px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: color 120ms ease;
+}
+
+.repeatable-list-item > button:hover {
+  color: var(--warn);
+}
+
+.repeatable-list > button {
+  align-self: flex-start;
+  margin-top: 4px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent-soft);
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.repeatable-list > button:hover {
+  border-color: var(--accent);
+}
+
+/* ---------- Generic buttons (export panel, recovery banner, etc.) ---------- */
+button {
+  font-size: 13.5px;
+}
+
+.export-panel button,
+.recovery-banner button {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-weight: 600;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.export-panel button:hover,
+.recovery-banner button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ---------- Tables (traceability matrix) ---------- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+th {
+  text-align: left;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ink);
+}
+
+tbody tr:hover {
+  background: var(--paper);
+}
+
+/* ---------- Preformatted / mermaid preview ---------- */
+pre {
+  font-family: var(--font-mono);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px;
+  overflow: auto;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+/* ---------- Traceability view specifics ---------- */
+.traceability-view section {
+  max-width: 72ch;
+}
+
+.traceability-view ul {
+  padding-left: 20px;
+  margin: 0;
+}
+
+.traceability-view p {
+  color: var(--ok);
+  font-weight: 600;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 720px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar-col {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+
+  main {
+    padding: 20px;
+  }
+
+  main > * {
+    max-width: none;
+  }
+}
