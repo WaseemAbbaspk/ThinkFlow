@@ -17,6 +17,67 @@ describe('reducer', () => {
     expect(s.project.requirements.criteria).toHaveLength(0); // cascade
   });
 
+  it('deletes a story and strips it from task tracesTo links', () => {
+    let s = reducer(initialState(), { type: 'ADD_STORY' });
+    const sid = s.project.requirements.stories[0].id;
+    s = reducer(s, { type: 'ADD_TASK' });
+    const tid = s.project.tasks[0].id;
+    s = reducer(s, { type: 'UPDATE_TASK', id: tid, patch: { tracesTo: [sid] } });
+    s = reducer(s, { type: 'DELETE_STORY', id: sid });
+    expect(s.project.tasks[0].tracesTo).not.toContain(sid); // cascade unlink
+  });
+
+  it('updates a story by id', () => {
+    let s = reducer(initialState(), { type: 'ADD_STORY' });
+    const sid = s.project.requirements.stories[0].id;
+    s = reducer(s, { type: 'UPDATE_STORY', id: sid, patch: { role: 'user', want: 'a todo', priority: 'Should' } });
+    expect(s.project.requirements.stories[0].role).toBe('user');
+    expect(s.project.requirements.stories[0].want).toBe('a todo');
+    expect(s.project.requirements.stories[0].priority).toBe('Should');
+  });
+
+  it('updates a criterion by id', () => {
+    let s = reducer(initialState(), { type: 'ADD_STORY' });
+    const sid = s.project.requirements.stories[0].id;
+    s = reducer(s, { type: 'ADD_CRITERION', storyId: sid });
+    const cid = s.project.requirements.criteria[0].id;
+    s = reducer(s, { type: 'UPDATE_CRITERION', id: cid, patch: { text: 'must persist' } });
+    expect(s.project.requirements.criteria[0].text).toBe('must persist');
+  });
+
+  it('deletes a criterion and cascades to task links and test.verifies', () => {
+    let s = reducer(initialState(), { type: 'ADD_STORY' });
+    const sid = s.project.requirements.stories[0].id;
+    s = reducer(s, { type: 'ADD_CRITERION', storyId: sid });
+    const cid = s.project.requirements.criteria[0].id;
+    // a task traces to the criterion, and a test verifies it
+    s = reducer(s, { type: 'ADD_TASK' });
+    const tid = s.project.tasks[0].id;
+    s = reducer(s, { type: 'UPDATE_TASK', id: tid, patch: { tracesTo: [cid] } });
+    s = reducer(s, { type: 'ADD_TEST' });
+    const testId = s.project.testing.tests[0].id;
+    s = reducer(s, { type: 'UPDATE_TEST', id: testId, patch: { verifies: cid } });
+
+    s = reducer(s, { type: 'DELETE_CRITERION', id: cid });
+
+    expect(s.project.requirements.criteria).toHaveLength(0);        // removed
+    expect(s.project.tasks[0].tracesTo).not.toContain(cid);        // task link stripped
+    expect(s.project.testing.tests[0].verifies).toBe('');          // test.verifies cleared
+  });
+
+  it('patches vision fields', () => {
+    const s = reducer(initialState(), { type: 'PATCH_VISION', patch: { statement: 'ship it', whyNow: 'because' } });
+    expect(s.project.vision.statement).toBe('ship it');
+    expect(s.project.vision.whyNow).toBe('because');
+  });
+
+  it('replaces the whole project', () => {
+    const seeded = reducer(initialState(), { type: 'ADD_STORY' }).project;
+    const s = reducer(initialState(), { type: 'REPLACE_PROJECT', project: seeded });
+    expect(s.project.requirements.stories).toHaveLength(1);
+    expect(s.project.requirements.stories[0].id).toBe('US-1');
+  });
+
   it('changes the active view', () => {
     const s = reducer(initialState(), { type: 'SET_VIEW', view: 'export' });
     expect(s.view).toBe('export');
