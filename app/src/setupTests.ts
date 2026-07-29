@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom';
 
-if (!window.matchMedia) {
+// zip.test.ts opts into the node environment, where `window` does not exist.
+if (typeof window !== 'undefined' && !window.matchMedia) {
   window.matchMedia = (query: string) =>
     ({
       matches: false,
