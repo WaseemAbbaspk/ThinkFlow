@@ -1,8 +1,19 @@
 import React, { useState } from 'react';
-import { useProject } from '../state/projectStore';
-import { renderAll } from '../export/markdown';
-import { buildZip } from '../export/zip';
-import { serialize, parse } from '../export/project';
+import { FileArchive, FileJson, Upload } from 'lucide-react';
+import { toast } from 'sonner';
+import { useProject } from '@/state/projectStore';
+import { renderAll } from '@/export/markdown';
+import { buildZip } from '@/export/zip';
+import { serialize, parse } from '@/export/project';
+import { SectionCard } from '@/components/SectionCard';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+
+const selectClass = cn(
+  'flex w-full max-w-72 rounded-[6px] border border-input bg-card px-3 py-1.5 text-sm text-foreground',
+  'focus-visible:outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-accent',
+);
 
 function download(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
@@ -21,12 +32,21 @@ export function ExportPanel() {
   const [importError, setImportError] = useState<string | null>(null);
 
   async function handleDownloadZip() {
-    const blob = await buildZip(renderAll(project));
-    download('thinkflow-docs.zip', blob);
+    try {
+      download('thinkflow-docs.zip', await buildZip(renderAll(project)));
+      toast.success('Exported thinkflow-docs.zip');
+    } catch {
+      toast.error('Could not build the zip archive');
+    }
   }
 
   function handleDownloadJson() {
-    download('project.json', new Blob([serialize(project)], { type: 'application/json' }));
+    try {
+      download('project.json', new Blob([serialize(project)], { type: 'application/json' }));
+      toast.success('Exported project.json');
+    } catch {
+      toast.error('Could not export the project file');
+    }
   }
 
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
@@ -38,37 +58,73 @@ export function ExportPanel() {
     if (result.ok) {
       setImportError(null);
       dispatch({ type: 'REPLACE_PROJECT', project: result.project });
+      toast.success(`Imported ${file.name}`);
     } else {
       setImportError(result.reason);
+      toast.error('Import failed');
     }
   }
 
   return (
     <div className="export-panel">
-      <section>
-        <h3>Preview</h3>
-        <select
-          value={selectedIndex}
-          onChange={e => setSelectedIndex(Number(e.target.value))}
-        >
-          {files.map((f, i) => (
-            <option key={f.name} value={i}>{f.name}</option>
-          ))}
-        </select>
-        <pre>{files[selectedIndex].content}</pre>
-      </section>
+      <SectionCard title="Preview" count={files.length}>
+        <div className="mb-3 flex flex-col gap-1">
+          <Label htmlFor="preview-file">Preview file</Label>
+          <select
+            id="preview-file"
+            className={selectClass}
+            value={selectedIndex}
+            onChange={e => setSelectedIndex(Number(e.target.value))}
+          >
+            {files.map((f, i) => <option key={f.name} value={i}>{f.name}</option>)}
+          </select>
+        </div>
+        <pre className="max-h-96 overflow-auto rounded-[6px] border border-border bg-muted p-3 font-mono text-[12.5px] leading-relaxed">
+          {files[selectedIndex].content}
+        </pre>
+      </SectionCard>
 
-      <section>
-        <h3>Download</h3>
-        <button type="button" onClick={handleDownloadZip}>Download all (.zip)</button>
-        <button type="button" onClick={handleDownloadJson}>Download project (.json)</button>
-      </section>
+      <SectionCard title="Download">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-[6px] border border-border p-4">
+            <div className="mb-1 flex items-center gap-2 text-[14px] font-semibold">
+              <FileArchive aria-hidden="true" className="size-4 text-muted-foreground" />
+              Documents
+            </div>
+            <p className="mb-3 text-[13px] text-muted-foreground">
+              Every rendered markdown document, zipped.
+            </p>
+            <Button variant="outline" size="sm" onClick={handleDownloadZip}>Download all (.zip)</Button>
+          </div>
+          <div className="rounded-[6px] border border-border p-4">
+            <div className="mb-1 flex items-center gap-2 text-[14px] font-semibold">
+              <FileJson aria-hidden="true" className="size-4 text-muted-foreground" />
+              Project file
+            </div>
+            <p className="mb-3 text-[13px] text-muted-foreground">
+              The full project state, re-importable below.
+            </p>
+            <Button variant="outline" size="sm" onClick={handleDownloadJson}>Download project (.json)</Button>
+          </div>
+        </div>
+      </SectionCard>
 
-      <section>
-        <h3>Import</h3>
-        <input type="file" accept="application/json" onChange={handleImport} />
-        {importError && <p role="alert">{importError}</p>}
-      </section>
+      <SectionCard title="Import">
+        <div className="flex flex-col gap-2 rounded-[6px] border border-dashed border-border p-4">
+          <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+            <Upload aria-hidden="true" className="size-4" />
+            Replace the current project with a saved <code className="font-mono">project.json</code>.
+          </div>
+          <input
+            type="file"
+            accept="application/json"
+            aria-label="Import project file"
+            onChange={handleImport}
+            className="text-[13px] file:mr-3 file:rounded-[6px] file:border file:border-border file:bg-card file:px-3 file:py-1.5 file:text-[13px] file:text-foreground hover:file:border-primary"
+          />
+        </div>
+        {importError && <p role="alert" className="mt-2 text-[13px] text-warn">{importError}</p>}
+      </SectionCard>
     </div>
   );
 }

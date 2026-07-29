@@ -1,5 +1,6 @@
 import { it, expect } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ProjectProvider } from '../state/projectStore';
 import { TraceabilityView } from './TraceabilityView';
 import { emptyProject, type Project } from '../model/types';
@@ -52,4 +53,17 @@ it('lists a gap message when a criterion is untested', () => {
   render(<ProjectProvider preload={p}><TraceabilityView /></ProjectProvider>);
   expect(screen.getByText(/AC-1\.1 has no test verifying it/i)).toBeInTheDocument();
   expect(screen.queryByText(/No gaps/i)).not.toBeInTheDocument();
+});
+
+it('filters matrix rows by the filter box', async () => {
+  const p = emptyProject('Filterable');
+  p.requirements.stories.push(
+    { id: 'US-1', role: '', want: '', benefit: '', priority: 'Must', servesGoalId: null },
+    { id: 'US-2', role: '', want: '', benefit: '', priority: 'Must', servesGoalId: null },
+  );
+  render(<ProjectProvider preload={p}><TraceabilityView /></ProjectProvider>);
+  expect(screen.getByText('US-2')).toBeInTheDocument();
+
+  await userEvent.type(screen.getByLabelText(/filter rows/i), 'US-1');
+  expect(screen.queryByText('US-2')).not.toBeInTheDocument();
 });
