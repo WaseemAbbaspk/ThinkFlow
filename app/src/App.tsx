@@ -1,16 +1,12 @@
-import { useEffect, useState } from 'react';
-import { ProjectProvider, useProject } from './state/projectStore';
-import { loadProject, saveProject, clearProject, STORAGE_KEY } from './state/persistence';
-import { Sidebar } from './components/Sidebar';
-import { TextField } from './components/inputs';
-import { VisionForm } from './stages/VisionForm';
-import { RequirementsForm } from './stages/RequirementsForm';
-import { ArchitectureForm } from './stages/ArchitectureForm';
-import { TasksForm } from './stages/TasksForm';
-import { TestingForm } from './stages/TestingForm';
-import { TraceabilityView } from './components/TraceabilityView';
-import { ExportPanel } from './components/ExportPanel';
-import type { Project } from './model/types';
+import { useState } from 'react';
+import { ProjectProvider } from '@/state/projectStore';
+import { ThemeProvider } from '@/state/theme';
+import { ConfirmProvider } from '@/state/confirm';
+import { loadProject, clearProject, STORAGE_KEY } from '@/state/persistence';
+import { AppShell } from '@/components/AppShell';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import type { Project } from '@/model/types';
 
 function RecoveryBanner({ reason, onFresh }: { reason: string; onFresh: () => void }) {
   function handleExportRaw() {
@@ -27,52 +23,13 @@ function RecoveryBanner({ reason, onFresh }: { reason: string; onFresh: () => vo
     onFresh();
   }
   return (
-    <div className="recovery-banner" role="alert">
-      <p>Could not load your saved project: {reason}</p>
-      <button type="button" onClick={handleExportRaw}>Export raw</button>
-      <button type="button" onClick={handleStartFresh}>Start fresh</button>
-    </div>
-  );
-}
-
-function Shell() {
-  const { state, dispatch } = useProject();
-  const [saveHealthy, setSaveHealthy] = useState(true);
-
-  useEffect(() => {
-    const id = setTimeout(() => setSaveHealthy(saveProject(state.project)), 500);
-    return () => clearTimeout(id);
-  }, [state.project]);
-
-  return (
-    <div className="app-shell">
-      <aside className="sidebar-col">
-        <div className="brand">
-          <span className="brand-name">ThinkFlow Studio</span>
-          <span className="brand-tag">REV-01</span>
-        </div>
-        <TextField
-          label="Project name"
-          value={state.project.meta.name}
-          onChange={v => dispatch({ type: 'PATCH_META', patch: { name: v } })}
-        />
-        <Sidebar />
-      </aside>
-      <main>
-        {!saveHealthy && (
-          <div className="storage-warning" role="status">
-            Your work could not be saved to this browser. Export your project to avoid losing it.
-          </div>
-        )}
-        {state.view === 'vision' && <VisionForm />}
-        {state.view === 'requirements' && <RequirementsForm />}
-        {state.view === 'architecture' && <ArchitectureForm />}
-        {state.view === 'tasks' && <TasksForm />}
-        {state.view === 'testing' && <TestingForm />}
-        {state.view === 'traceability' && <TraceabilityView />}
-        {state.view === 'export' && <ExportPanel />}
-      </main>
-    </div>
+    <Card className="max-w-md p-6" role="alert">
+      <p className="mb-4 text-sm">Could not load your saved project: {reason}</p>
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" onClick={handleExportRaw}>Export raw</Button>
+        <Button variant="outline" size="sm" onClick={handleStartFresh}>Start fresh</Button>
+      </div>
+    </Card>
   );
 }
 
@@ -82,17 +39,23 @@ function App() {
 
   if (loaded.ok === false && !fresh) {
     return (
-      <div className="recovery-page">
-        <RecoveryBanner reason={loaded.reason} onFresh={() => setFresh(true)} />
-      </div>
+      <ThemeProvider>
+        <div className="flex h-full items-center justify-center p-8">
+          <RecoveryBanner reason={loaded.reason} onFresh={() => setFresh(true)} />
+        </div>
+      </ThemeProvider>
     );
   }
 
   const preload: Project | undefined = !fresh && loaded.ok === true ? loaded.project : undefined;
   return (
-    <ProjectProvider preload={preload}>
-      <Shell />
-    </ProjectProvider>
+    <ThemeProvider>
+      <ConfirmProvider>
+        <ProjectProvider preload={preload}>
+          <AppShell />
+        </ProjectProvider>
+      </ConfirmProvider>
+    </ThemeProvider>
   );
 }
 
