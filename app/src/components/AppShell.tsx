@@ -1,6 +1,7 @@
 import { useProject } from '@/state/projectStore';
 import { useSaveStatus } from '@/state/useSaveStatus';
 import { Sidebar } from '@/components/Sidebar';
+import { Brand } from '@/components/Brand';
 import { TopBar } from '@/components/TopBar';
 import { Toaster } from '@/components/ui/sonner';
 import { VisionForm } from '@/stages/VisionForm';
@@ -18,10 +19,7 @@ export function AppShell() {
   return (
     <div className="flex h-full">
       <aside className="hidden w-64 shrink-0 flex-col gap-4 overflow-y-auto border-r border-border bg-card p-4 md:flex">
-        <div className="flex items-baseline justify-between gap-2 border-b border-border pb-3">
-          <span className="text-[15px] font-bold tracking-tight">ThinkFlow Studio</span>
-          <span className="font-mono text-[11px] text-muted-foreground">REV-01</span>
-        </div>
+        <Brand />
         <Sidebar />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
