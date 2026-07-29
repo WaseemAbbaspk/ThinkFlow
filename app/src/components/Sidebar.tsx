@@ -26,7 +26,12 @@ const GAP_KIND_TO_VIEWS: Record<Gap['kind'], View[]> = {
   'dangling-link': ['tasks'],
 };
 
-export function Sidebar() {
+export interface SidebarProps {
+  /** Called after a stage is chosen, so a containing sheet can close itself. */
+  onNavigate?: () => void;
+}
+
+export function Sidebar({ onNavigate }: SidebarProps = {}) {
   const { state, dispatch } = useProject();
   const gaps = detectGaps(state.project);
   const gappyViews = new Set<View>(gaps.flatMap(g => GAP_KIND_TO_VIEWS[g.kind]));
@@ -48,7 +53,10 @@ export function Sidebar() {
               <button
                 type="button"
                 aria-current={active ? 'page' : undefined}
-                onClick={() => dispatch({ type: 'SET_VIEW', view })}
+                onClick={() => {
+                  dispatch({ type: 'SET_VIEW', view });
+                  onNavigate?.();
+                }}
                 className={cn(
                   'flex w-full items-center gap-2 rounded-[6px] px-2.5 py-2 text-left text-[13.5px] transition-colors',
                   active

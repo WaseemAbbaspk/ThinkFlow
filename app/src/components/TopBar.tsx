@@ -5,6 +5,7 @@ import { renderAll } from '@/export/markdown';
 import { buildZip } from '@/export/zip';
 import { serialize } from '@/export/project';
 import { SaveStatus } from '@/components/SaveStatus';
+import { MobileNav } from '@/components/MobileNav';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -46,6 +47,7 @@ export function TopBar({ saveState }: { saveState: SaveState }) {
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
+      <MobileNav />
       <Input
         aria-label="Project name"
         className="h-8 max-w-72 font-medium"
