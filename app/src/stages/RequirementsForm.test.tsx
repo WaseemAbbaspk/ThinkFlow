@@ -1,52 +1,57 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ProjectProvider } from '../state/projectStore';
+import { renderWithProviders } from '@/test/renderWithProviders';
 import { RequirementsForm } from './RequirementsForm';
 
 describe('RequirementsForm', () => {
   it('adds a story with an auto id shown', async () => {
-    render(<ProjectProvider><RequirementsForm /></ProjectProvider>);
+    renderWithProviders(<RequirementsForm />);
     await userEvent.click(screen.getByRole('button', { name: /add story/i }));
     expect(screen.getByText(/US-1/)).toBeInTheDocument();
   });
+
   it('adds a criterion under a story', async () => {
-    render(<ProjectProvider><RequirementsForm /></ProjectProvider>);
+    renderWithProviders(<RequirementsForm />);
     await userEvent.click(screen.getByRole('button', { name: /add story/i }));
     await userEvent.click(screen.getByRole('button', { name: /add criterion/i }));
     expect(screen.getByText(/AC-1\.1/)).toBeInTheDocument();
   });
 
-  it('keeps the story when delete is not confirmed', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-    render(<ProjectProvider><RequirementsForm /></ProjectProvider>);
+  it('keeps the story when the delete dialog is cancelled', async () => {
+    renderWithProviders(<RequirementsForm />);
     await userEvent.click(screen.getByRole('button', { name: /add story/i }));
     await userEvent.click(screen.getByRole('button', { name: /add criterion/i }));
     const removeButtons = screen.getAllByRole('button', { name: /remove/i });
     await userEvent.click(removeButtons[removeButtons.length - 1]);
-    expect(confirmSpy).toHaveBeenCalled();
+
+    expect(await screen.findByText('Delete US-1?')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
+
     expect(screen.getByText(/US-1/)).toBeInTheDocument();
-    confirmSpy.mockRestore();
   });
 
-  it('removes the story when delete is confirmed', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    render(<ProjectProvider><RequirementsForm /></ProjectProvider>);
+  it('removes the story when the delete dialog is confirmed', async () => {
+    renderWithProviders(<RequirementsForm />);
     await userEvent.click(screen.getByRole('button', { name: /add story/i }));
     await userEvent.click(screen.getByRole('button', { name: /add criterion/i }));
     const removeButtons = screen.getAllByRole('button', { name: /remove/i });
     await userEvent.click(removeButtons[removeButtons.length - 1]);
-    expect(confirmSpy).toHaveBeenCalled();
+
+    expect(await screen.findByText('Delete US-1?')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+
     expect(screen.queryByText(/US-1/)).not.toBeInTheDocument();
-    confirmSpy.mockRestore();
   });
 
   it('deletes a story with no dependents without prompting', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm');
-    render(<ProjectProvider><RequirementsForm /></ProjectProvider>);
+    renderWithProviders(<RequirementsForm />);
     await userEvent.click(screen.getByRole('button', { name: /add story/i }));
     await userEvent.click(screen.getByRole('button', { name: /remove/i }));
+
     expect(confirmSpy).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     expect(screen.queryByText(/US-1/)).not.toBeInTheDocument();
     confirmSpy.mockRestore();
   });

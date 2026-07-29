@@ -8,3 +8,9 @@ it('renders all stage nav items', () => {
   ['Vision','Requirements','Architecture','Tasks','Testing','Traceability','Export']
     .forEach(label => expect(screen.getByRole('button', { name: new RegExp(label,'i') })).toBeInTheDocument());
 });
+
+it('keeps stage labels at the start of the accessible name', () => {
+  render(<ProjectProvider><Sidebar /></ProjectProvider>);
+  expect(screen.getByRole('button', { name: /^Tasks/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /^Vision/i })).toBeInTheDocument();
+});

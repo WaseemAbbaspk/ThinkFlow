@@ -1,5 +1,7 @@
 import { useProject } from '../state/projectStore';
 import { TextField, TextArea, SelectField, LinkSelect, RepeatableList } from '../components/inputs';
+import { SectionCard } from '@/components/SectionCard';
+import { Badge } from '@/components/ui/badge';
 import type { Test, TestLevel, TestStatus } from '../model/types';
 
 const LEVEL_OPTIONS = [
@@ -31,8 +33,7 @@ export function TestingForm() {
 
   return (
     <div className="testing-form">
-      <section>
-        <h3>Entry / exit criteria</h3>
+      <SectionCard title="Entry / exit criteria">
         <TextArea
           label="Entry criteria"
           value={testing.entryCriteria}
@@ -43,10 +44,9 @@ export function TestingForm() {
           value={testing.exitCriteria}
           onChange={v => replaceTesting({ exitCriteria: v })}
         />
-      </section>
+      </SectionCard>
 
-      <section>
-        <h3>Tests</h3>
+      <SectionCard title="Tests" count={testing.tests.length}>
         <RepeatableList<Test>
           items={testing.tests}
           addLabel="Add test"
@@ -54,7 +54,7 @@ export function TestingForm() {
           onRemove={i => dispatch({ type: 'DELETE_TEST', id: testing.tests[i].id })}
           renderItem={(test) => (
             <div>
-              <div className="id-tag">{test.id}</div>
+              <Badge className="mb-2">{test.id}</Badge>
               <TextField
                 label="Description"
                 value={test.description}
@@ -81,7 +81,7 @@ export function TestingForm() {
             </div>
           )}
         />
-      </section>
+      </SectionCard>
     </div>
   );
 }
