@@ -1,4 +1,5 @@
 import { useProject } from '../state/projectStore';
+import { useConfirm } from '@/state/confirm';
 import { TextField, SelectField, LinkSelect, RepeatableList } from '../components/inputs';
 import type { Goal, UserStory, Criterion, Nfr, Priority } from '../model/types';
 
@@ -8,12 +9,9 @@ const PRIORITY_OPTIONS = [
   { value: 'Could', label: 'Could' },
 ];
 
-function confirmDelete(message: string): boolean {
-  return window.confirm(message);
-}
-
 export function RequirementsForm() {
   const { state, dispatch } = useProject();
+  const confirm = useConfirm();
   const project = state.project;
   const { requirements, tasks, testing } = project;
 
@@ -63,13 +61,17 @@ export function RequirementsForm() {
           items={requirements.stories}
           addLabel="Add story"
           onAdd={() => dispatch({ type: 'ADD_STORY' })}
-          onRemove={i => {
+          onRemove={async i => {
             const story = requirements.stories[i];
             const dependentCriteria = requirements.criteria.filter(c => c.storyId === story.id);
             const dependentTasks = tasks.filter(t => t.tracesTo.includes(story.id));
             if (dependentCriteria.length > 0 || dependentTasks.length > 0) {
-              const message = `Delete ${story.id}? This also removes ${dependentCriteria.length} criteria and unlinks ${dependentTasks.length} tasks.`;
-              if (!confirmDelete(message)) return;
+              const ok = await confirm({
+                title: `Delete ${story.id}?`,
+                description: `This also removes ${dependentCriteria.length} criteria and unlinks ${dependentTasks.length} tasks.`,
+                confirmLabel: 'Delete',
+              });
+              if (!ok) return;
             }
             dispatch({ type: 'DELETE_STORY', id: story.id });
           }}
@@ -112,14 +114,18 @@ export function RequirementsForm() {
                 items={requirements.criteria.filter(c => c.storyId === story.id)}
                 addLabel="Add criterion"
                 onAdd={() => dispatch({ type: 'ADD_CRITERION', storyId: story.id })}
-                onRemove={i => {
+                onRemove={async i => {
                   const storyCriteria = requirements.criteria.filter(c => c.storyId === story.id);
                   const criterion = storyCriteria[i];
                   const dependentTasks = tasks.filter(t => t.tracesTo.includes(criterion.id));
                   const dependentTests = testing.tests.filter(t => t.verifies === criterion.id);
                   if (dependentTasks.length > 0 || dependentTests.length > 0) {
-                    const message = `Delete ${criterion.id}? This unlinks ${dependentTasks.length} tasks and ${dependentTests.length} tests.`;
-                    if (!confirmDelete(message)) return;
+                    const ok = await confirm({
+                      title: `Delete ${criterion.id}?`,
+                      description: `This unlinks ${dependentTasks.length} tasks and ${dependentTests.length} tests.`,
+                      confirmLabel: 'Delete',
+                    });
+                    if (!ok) return;
                   }
                   dispatch({ type: 'DELETE_CRITERION', id: criterion.id });
                 }}
