@@ -159,6 +159,12 @@ type Project = {
 
 - Each entity type has a monotonic counter derived from existing IDs (never reuses a number
   within a session, to avoid re-pointing existing links).
+- **One exception, added 2026-07-29** (`model/reclaim.ts`): deleting a row returns its number to
+  the pool only when all three hold — the row is **blank** (no author-supplied content, defaults
+  like `priority: 'Must'` not counting), **unreferenced** by anything in the project, and the
+  **highest-numbered** of its kind. This covers the mis-click of adding a row and immediately
+  removing it. Since nothing meaningful ever existed under that ID, reissuing it cannot re-point
+  an existing link. Anything filled in, referenced, or older still leaves a permanent gap.
 - `AC` IDs are `AC-<storyNumber>.<m>` so a criterion visibly belongs to its story.
 - IDs are assigned on creation and never rewritten by the app. (Renumbering would sever
   traceability — the same rule the methodology states.)

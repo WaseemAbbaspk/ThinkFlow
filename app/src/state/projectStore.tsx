@@ -11,6 +11,7 @@ import {
   type Test,
 } from '../model/types';
 import { nextId } from '../model/ids';
+import { reclaimCounters } from '../model/reclaim';
 
 export type View = 'vision'|'requirements'|'architecture'|'tasks'|'testing'|'traceability'|'export';
 export interface State { project: Project; view: View; }
@@ -23,7 +24,9 @@ export type Action =
   | { type: 'PATCH_META'; patch: Partial<Project['meta']> }
   | { type: 'ADD_STORY' } | { type: 'UPDATE_STORY'; id: string; patch: Partial<UserStory> } | { type: 'DELETE_STORY'; id: string }
   | { type: 'ADD_CRITERION'; storyId: string } | { type: 'UPDATE_CRITERION'; id: string; patch: Partial<Criterion> } | { type: 'DELETE_CRITERION'; id: string }
-  | { type: 'ADD_GOAL' } | { type: 'ADD_NFR' } | { type: 'ADD_ADR' }
+  | { type: 'ADD_GOAL' } | { type: 'DELETE_GOAL'; id: string }
+  | { type: 'ADD_NFR' } | { type: 'DELETE_NFR'; id: string }
+  | { type: 'ADD_ADR' } | { type: 'DELETE_ADR'; id: string }
   | { type: 'ADD_TASK' } | { type: 'UPDATE_TASK'; id: string; patch: Partial<Project['tasks'][number]> } | { type: 'DELETE_TASK'; id: string }
   | { type: 'ADD_TEST' } | { type: 'UPDATE_TEST'; id: string; patch: Partial<Project['testing']['tests'][number]> } | { type: 'DELETE_TEST'; id: string };
 
@@ -48,11 +51,15 @@ export function reducer(state: State, action: Action): State {
     case 'UPDATE_STORY':
       return { ...state, project: touch({ ...p, requirements: { ...p.requirements,
         stories: p.requirements.stories.map(s => s.id === action.id ? { ...s, ...action.patch } : s) } }) };
-    case 'DELETE_STORY':
-      return { ...state, project: touch({ ...p, requirements: { ...p.requirements,
+    case 'DELETE_STORY': {
+      const story = p.requirements.stories.find(s => s.id === action.id);
+      const counters = story ? reclaimCounters(p, { kind: 'US', entity: story }) : p.meta.counters;
+      return { ...state, project: touch({ ...p, meta: { ...p.meta, counters },
+        requirements: { ...p.requirements,
         stories: p.requirements.stories.filter(s => s.id !== action.id),
         criteria: p.requirements.criteria.filter(c => c.storyId !== action.id) },
         tasks: p.tasks.map(t => ({ ...t, tracesTo: t.tracesTo.filter(r => r !== action.id) })) }) };
+    }
     case 'ADD_CRITERION': {
       const { id, counters } = nextId(p.meta.counters, 'AC', { storyNumber: storyNumber(action.storyId) });
       const crit: Criterion = { id, storyId: action.storyId, text: '' };
@@ -62,17 +69,48 @@ export function reducer(state: State, action: Action): State {
     case 'UPDATE_CRITERION':
       return { ...state, project: touch({ ...p, requirements: { ...p.requirements,
         criteria: p.requirements.criteria.map(c => c.id === action.id ? { ...c, ...action.patch } : c) } }) };
-    case 'DELETE_CRITERION':
-      return { ...state, project: touch({ ...p,
+    case 'DELETE_CRITERION': {
+      const crit = p.requirements.criteria.find(c => c.id === action.id);
+      const counters = crit ? reclaimCounters(p, { kind: 'AC', entity: crit }) : p.meta.counters;
+      return { ...state, project: touch({ ...p, meta: { ...p.meta, counters },
         requirements: { ...p.requirements, criteria: p.requirements.criteria.filter(c => c.id !== action.id) },
         tasks: p.tasks.map(t => ({ ...t, tracesTo: t.tracesTo.filter(r => r !== action.id) })),
         testing: { ...p.testing, tests: p.testing.tests.map(t => t.verifies === action.id ? { ...t, verifies: '' } : t) } }) };
+    }
 
     case 'ADD_GOAL': {
       const { id, counters } = nextId(p.meta.counters, 'GOAL');
       const goal: Goal = { id, text: '', metric: '' };
       return { ...state, project: touch({ ...p, meta: { ...p.meta, counters },
         goals: [...p.goals, goal] }) };
+    }
+
+    case 'DELETE_GOAL': {
+      const goal = p.goals.find(g => g.id === action.id);
+      const counters = goal ? reclaimCounters(p, { kind: 'GOAL', entity: goal }) : p.meta.counters;
+      return { ...state, project: touch({ ...p, meta: { ...p.meta, counters },
+        goals: p.goals.filter(g => g.id !== action.id),
+        requirements: { ...p.requirements,
+          stories: p.requirements.stories.map(s =>
+            s.servesGoalId === action.id ? { ...s, servesGoalId: null } : s) } }) };
+    }
+
+    case 'DELETE_NFR': {
+      const nfr = p.requirements.nfrs.find(n => n.id === action.id);
+      const counters = nfr ? reclaimCounters(p, { kind: 'NFR', entity: nfr }) : p.meta.counters;
+      return { ...state, project: touch({ ...p, meta: { ...p.meta, counters },
+        requirements: { ...p.requirements, nfrs: p.requirements.nfrs.filter(n => n.id !== action.id) },
+        architecture: { ...p.architecture,
+          adrs: p.architecture.adrs.map(a => ({ ...a, relatesTo: a.relatesTo.filter(r => r !== action.id) })) } }) };
+    }
+
+    case 'DELETE_ADR': {
+      const adr = p.architecture.adrs.find(a => a.id === action.id);
+      const counters = adr ? reclaimCounters(p, { kind: 'ADR', entity: adr }) : p.meta.counters;
+      return { ...state, project: touch({ ...p, meta: { ...p.meta, counters },
+        architecture: { ...p.architecture,
+          adrs: p.architecture.adrs.filter(a => a.id !== action.id),
+          components: p.architecture.components.map(c => ({ ...c, adrIds: c.adrIds.filter(r => r !== action.id) })) } }) };
     }
 
     case 'ADD_NFR': {
@@ -105,9 +143,12 @@ export function reducer(state: State, action: Action): State {
     case 'UPDATE_TASK':
       return { ...state, project: touch({ ...p,
         tasks: p.tasks.map(t => t.id === action.id ? { ...t, ...action.patch } : t) }) };
-    case 'DELETE_TASK':
-      return { ...state, project: touch({ ...p,
+    case 'DELETE_TASK': {
+      const task = p.tasks.find(t => t.id === action.id);
+      const counters = task ? reclaimCounters(p, { kind: 'TASK', entity: task }) : p.meta.counters;
+      return { ...state, project: touch({ ...p, meta: { ...p.meta, counters },
         tasks: p.tasks.filter(t => t.id !== action.id) }) };
+    }
 
     case 'ADD_TEST': {
       const { id, counters } = nextId(p.meta.counters, 'TEST');
@@ -118,9 +159,12 @@ export function reducer(state: State, action: Action): State {
     case 'UPDATE_TEST':
       return { ...state, project: touch({ ...p, testing: { ...p.testing,
         tests: p.testing.tests.map(t => t.id === action.id ? { ...t, ...action.patch } : t) } }) };
-    case 'DELETE_TEST':
-      return { ...state, project: touch({ ...p, testing: { ...p.testing,
-        tests: p.testing.tests.filter(t => t.id !== action.id) } }) };
+    case 'DELETE_TEST': {
+      const test = p.testing.tests.find(t => t.id === action.id);
+      const counters = test ? reclaimCounters(p, { kind: 'TEST', entity: test }) : p.meta.counters;
+      return { ...state, project: touch({ ...p, meta: { ...p.meta, counters },
+        testing: { ...p.testing, tests: p.testing.tests.filter(t => t.id !== action.id) } }) };
+    }
 
     default: return state;
   }

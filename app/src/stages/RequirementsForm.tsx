@@ -34,7 +34,7 @@ export function RequirementsForm() {
           items={project.goals}
           addLabel="Add goal"
           onAdd={() => dispatch({ type: 'ADD_GOAL' })}
-          onRemove={i => replace({ goals: project.goals.filter((_, idx) => idx !== i) })}
+          onRemove={i => dispatch({ type: 'DELETE_GOAL', id: project.goals[i].id })}
           renderItem={(item, i) => (
             <>
               <Badge className="mb-2">{item.id}</Badge>
@@ -151,7 +151,7 @@ export function RequirementsForm() {
           items={requirements.nfrs}
           addLabel="Add NFR"
           onAdd={() => dispatch({ type: 'ADD_NFR' })}
-          onRemove={i => replaceRequirements({ nfrs: requirements.nfrs.filter((_, idx) => idx !== i) })}
+          onRemove={i => dispatch({ type: 'DELETE_NFR', id: requirements.nfrs[i].id })}
           renderItem={(item, i) => (
             <>
               <Badge className="mb-2">{item.id}</Badge>

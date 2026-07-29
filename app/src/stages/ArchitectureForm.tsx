@@ -149,7 +149,7 @@ export function ArchitectureForm() {
           items={architecture.adrs}
           addLabel="Add ADR"
           onAdd={() => dispatch({ type: 'ADD_ADR' })}
-          onRemove={i => replaceArch({ adrs: architecture.adrs.filter((_, idx) => idx !== i) })}
+          onRemove={i => dispatch({ type: 'DELETE_ADR', id: architecture.adrs[i].id })}
           renderItem={(adr) => (
             <div>
               <Badge className="mb-2">{adr.id}</Badge>

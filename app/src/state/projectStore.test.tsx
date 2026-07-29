@@ -138,3 +138,77 @@ describe('reducer', () => {
     expect(s.project.testing.tests).toHaveLength(0);
   });
 });
+
+describe('id reclamation on delete', () => {
+  it('reuses the number when a blank goal is added then removed', () => {
+    let s = reducer(initialState(), { type: 'ADD_GOAL' });
+    expect(s.project.goals[0].id).toBe('GOAL-1');
+
+    s = reducer(s, { type: 'DELETE_GOAL', id: 'GOAL-1' });
+    expect(s.project.meta.counters.GOAL).toBe(0);
+
+    s = reducer(s, { type: 'ADD_GOAL' });
+    expect(s.project.goals[0].id).toBe('GOAL-1');
+  });
+
+  it('keeps the gap when the removed goal had content', () => {
+    let s = reducer(initialState(), { type: 'ADD_GOAL' });
+    s = reducer(s, {
+      type: 'REPLACE_PROJECT',
+      project: { ...s.project, goals: [{ ...s.project.goals[0], text: 'Ship faster' }] },
+    });
+
+    s = reducer(s, { type: 'DELETE_GOAL', id: 'GOAL-1' });
+    s = reducer(s, { type: 'ADD_GOAL' });
+    expect(s.project.goals[0].id).toBe('GOAL-2');
+  });
+
+  it('keeps the gap when the removed goal is still referenced by a story', () => {
+    let s = reducer(initialState(), { type: 'ADD_GOAL' });
+    s = reducer(s, { type: 'ADD_STORY' });
+    s = reducer(s, { type: 'UPDATE_STORY', id: 'US-1', patch: { servesGoalId: 'GOAL-1' } });
+
+    s = reducer(s, { type: 'DELETE_GOAL', id: 'GOAL-1' });
+    expect(s.project.requirements.stories[0].servesGoalId).toBeNull();
+
+    s = reducer(s, { type: 'ADD_GOAL' });
+    expect(s.project.goals[0].id).toBe('GOAL-2');
+  });
+
+  it('only reclaims the newest, leaving older numbers permanently spent', () => {
+    let s = reducer(initialState(), { type: 'ADD_GOAL' });
+    s = reducer(s, { type: 'ADD_GOAL' });
+    expect(s.project.goals[1].id).toBe('GOAL-2');
+
+    s = reducer(s, { type: 'DELETE_GOAL', id: 'GOAL-1' });
+    s = reducer(s, { type: 'ADD_GOAL' });
+    expect(s.project.goals.map(g => g.id)).toEqual(['GOAL-2', 'GOAL-3']);
+  });
+
+  it('reuses numbers for blank stories, tasks and tests too', () => {
+    let s = reducer(initialState(), { type: 'ADD_TASK' });
+    s = reducer(s, { type: 'DELETE_TASK', id: 'TASK-1' });
+    s = reducer(s, { type: 'ADD_TASK' });
+    expect(s.project.tasks[0].id).toBe('TASK-1');
+
+    s = reducer(s, { type: 'ADD_TEST' });
+    s = reducer(s, { type: 'DELETE_TEST', id: 'TEST-1' });
+    s = reducer(s, { type: 'ADD_TEST' });
+    expect(s.project.testing.tests[0].id).toBe('TEST-1');
+
+    s = reducer(s, { type: 'ADD_STORY' });
+    s = reducer(s, { type: 'DELETE_STORY', id: 'US-1' });
+    s = reducer(s, { type: 'ADD_STORY' });
+    expect(s.project.requirements.stories[0].id).toBe('US-1');
+  });
+
+  it('reuses a blank criterion number within its story', () => {
+    let s = reducer(initialState(), { type: 'ADD_STORY' });
+    s = reducer(s, { type: 'ADD_CRITERION', storyId: 'US-1' });
+    expect(s.project.requirements.criteria[0].id).toBe('AC-1.1');
+
+    s = reducer(s, { type: 'DELETE_CRITERION', id: 'AC-1.1' });
+    s = reducer(s, { type: 'ADD_CRITERION', storyId: 'US-1' });
+    expect(s.project.requirements.criteria[0].id).toBe('AC-1.1');
+  });
+});
