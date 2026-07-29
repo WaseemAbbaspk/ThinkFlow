@@ -1,5 +1,8 @@
 import { useProject } from '../state/projectStore';
 import { TextField, TextArea, SelectField, LinkSelect, RepeatableList } from '../components/inputs';
+import { SectionCard } from '@/components/SectionCard';
+import { Badge } from '@/components/ui/badge';
+import { subheadingClass } from '@/components/typography';
 import type { Task, TaskStatus } from '../model/types';
 
 const STATUS_OPTIONS = [
@@ -21,8 +24,7 @@ export function TasksForm() {
 
   return (
     <div className="tasks-form">
-      <section>
-        <h3>Tasks</h3>
+      <SectionCard title="Tasks" count={tasks.length}>
         <RepeatableList<Task>
           items={tasks}
           addLabel="Add task"
@@ -35,7 +37,7 @@ export function TasksForm() {
 
             return (
               <div>
-                <div className="id-tag">{task.id}</div>
+                <Badge className="mb-2">{task.id}</Badge>
                 <TextField
                   label="Title"
                   value={task.title}
@@ -75,7 +77,7 @@ export function TasksForm() {
                   onChange={v => dispatch({ type: 'UPDATE_TASK', id: task.id, patch: { outOfScope: v } })}
                 />
 
-                <h4>Acceptance</h4>
+                <h4 className={subheadingClass}>Acceptance</h4>
                 <RepeatableList<string>
                   items={task.acceptance}
                   addLabel="Add acceptance"
@@ -108,7 +110,7 @@ export function TasksForm() {
             );
           }}
         />
-      </section>
+      </SectionCard>
     </div>
   );
 }

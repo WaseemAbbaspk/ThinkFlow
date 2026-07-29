@@ -1,6 +1,9 @@
 import { useProject } from '../state/projectStore';
 import { useConfirm } from '@/state/confirm';
 import { TextField, SelectField, LinkSelect, RepeatableList } from '../components/inputs';
+import { SectionCard } from '@/components/SectionCard';
+import { Badge } from '@/components/ui/badge';
+import { subheadingClass } from '@/components/typography';
 import type { Goal, UserStory, Criterion, Nfr, Priority } from '../model/types';
 
 const PRIORITY_OPTIONS = [
@@ -26,8 +29,7 @@ export function RequirementsForm() {
 
   return (
     <div className="requirements-form">
-      <section>
-        <h3>Goals</h3>
+      <SectionCard title="Goals" count={project.goals.length}>
         <RepeatableList<Goal>
           items={project.goals}
           addLabel="Add goal"
@@ -35,7 +37,7 @@ export function RequirementsForm() {
           onRemove={i => replace({ goals: project.goals.filter((_, idx) => idx !== i) })}
           renderItem={(item, i) => (
             <>
-              <div className="id-tag">{item.id}</div>
+              <Badge className="mb-2">{item.id}</Badge>
               <TextField
                 label="Text"
                 value={item.text}
@@ -53,10 +55,9 @@ export function RequirementsForm() {
             </>
           )}
         />
-      </section>
+      </SectionCard>
 
-      <section>
-        <h3>Stories</h3>
+      <SectionCard title="Stories" count={requirements.stories.length}>
         <RepeatableList<UserStory>
           items={requirements.stories}
           addLabel="Add story"
@@ -77,7 +78,7 @@ export function RequirementsForm() {
           }}
           renderItem={(story) => (
             <div>
-              <div className="id-tag">{story.id}</div>
+              <Badge className="mb-2">{story.id}</Badge>
               <TextField
                 label="Role"
                 value={story.role}
@@ -109,7 +110,7 @@ export function RequirementsForm() {
                 })}
               />
 
-              <h4>Criteria</h4>
+              <h4 className={subheadingClass}>Criteria</h4>
               <RepeatableList<Criterion>
                 items={requirements.criteria.filter(c => c.storyId === story.id)}
                 addLabel="Add criterion"
@@ -131,7 +132,7 @@ export function RequirementsForm() {
                 }}
                 renderItem={(criterion) => (
                   <div>
-                    <div className="id-tag">{criterion.id}</div>
+                    <Badge className="mb-2">{criterion.id}</Badge>
                     <TextField
                       label="Text"
                       value={criterion.text}
@@ -143,10 +144,9 @@ export function RequirementsForm() {
             </div>
           )}
         />
-      </section>
+      </SectionCard>
 
-      <section>
-        <h3>Non-functional requirements</h3>
+      <SectionCard title="Non-functional requirements" count={requirements.nfrs.length}>
         <RepeatableList<Nfr>
           items={requirements.nfrs}
           addLabel="Add NFR"
@@ -154,7 +154,7 @@ export function RequirementsForm() {
           onRemove={i => replaceRequirements({ nfrs: requirements.nfrs.filter((_, idx) => idx !== i) })}
           renderItem={(item, i) => (
             <>
-              <div className="id-tag">{item.id}</div>
+              <Badge className="mb-2">{item.id}</Badge>
               <TextField
                 label="Name"
                 value={item.name}
@@ -172,10 +172,9 @@ export function RequirementsForm() {
             </>
           )}
         />
-      </section>
+      </SectionCard>
 
-      <section>
-        <h3>Assumptions</h3>
+      <SectionCard title="Assumptions" count={requirements.assumptions.length}>
         <RepeatableList<string>
           items={requirements.assumptions}
           addLabel="Add assumption"
@@ -191,10 +190,9 @@ export function RequirementsForm() {
             />
           )}
         />
-      </section>
+      </SectionCard>
 
-      <section>
-        <h3>Constraints</h3>
+      <SectionCard title="Constraints" count={requirements.constraints.length}>
         <RepeatableList<string>
           items={requirements.constraints}
           addLabel="Add constraint"
@@ -210,10 +208,9 @@ export function RequirementsForm() {
             />
           )}
         />
-      </section>
+      </SectionCard>
 
-      <section>
-        <h3>Non-goals</h3>
+      <SectionCard title="Non-goals" count={requirements.nonGoals.length}>
         <RepeatableList<string>
           items={requirements.nonGoals}
           addLabel="Add non-goal"
@@ -229,10 +226,9 @@ export function RequirementsForm() {
             />
           )}
         />
-      </section>
+      </SectionCard>
 
-      <section>
-        <h3>Signoff</h3>
+      <SectionCard title="Signoff">
         <TextField
           label="Signed off by"
           value={requirements.signoff?.by ?? ''}
@@ -247,7 +243,7 @@ export function RequirementsForm() {
             signoff: { by: requirements.signoff?.by ?? '', date: v },
           })}
         />
-      </section>
+      </SectionCard>
     </div>
   );
 }

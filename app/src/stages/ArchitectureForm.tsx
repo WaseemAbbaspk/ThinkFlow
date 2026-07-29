@@ -1,5 +1,8 @@
 import { useProject } from '../state/projectStore';
 import { TextField, TextArea, SelectField, LinkSelect, RepeatableList } from '../components/inputs';
+import { SectionCard } from '@/components/SectionCard';
+import { Badge } from '@/components/ui/badge';
+import { subheadingClass } from '@/components/typography';
 import type { Component, Flow, NfrConsideration, Adr, AdrOption, AdrStatus } from '../model/types';
 
 const ADR_STATUS_OPTIONS = [
@@ -30,17 +33,15 @@ export function ArchitectureForm() {
 
   return (
     <div className="architecture-form">
-      <section>
-        <h3>Overview</h3>
+      <SectionCard title="Overview">
         <TextArea
           label="Overview"
           value={architecture.overview}
           onChange={v => replaceArch({ overview: v })}
         />
-      </section>
+      </SectionCard>
 
-      <section>
-        <h3>Diagrams</h3>
+      <SectionCard title="Diagrams">
         <TextArea
           label="Context diagram (Mermaid)"
           value={architecture.contextDiagram}
@@ -51,10 +52,9 @@ export function ArchitectureForm() {
           value={architecture.componentDiagram}
           onChange={v => replaceArch({ componentDiagram: v })}
         />
-      </section>
+      </SectionCard>
 
-      <section>
-        <h3>Components</h3>
+      <SectionCard title="Components" count={architecture.components.length}>
         <RepeatableList<Component>
           items={architecture.components}
           addLabel="Add component"
@@ -88,10 +88,9 @@ export function ArchitectureForm() {
             </>
           )}
         />
-      </section>
+      </SectionCard>
 
-      <section>
-        <h3>Key flows</h3>
+      <SectionCard title="Key flows" count={architecture.keyFlows.length}>
         <RepeatableList<Flow>
           items={architecture.keyFlows}
           addLabel="Add key flow"
@@ -116,10 +115,9 @@ export function ArchitectureForm() {
             </>
           )}
         />
-      </section>
+      </SectionCard>
 
-      <section>
-        <h3>NFR considerations</h3>
+      <SectionCard title="NFR considerations" count={architecture.nfrConsiderations.length}>
         <RepeatableList<NfrConsideration>
           items={architecture.nfrConsiderations}
           addLabel="Add NFR consideration"
@@ -144,10 +142,9 @@ export function ArchitectureForm() {
             </>
           )}
         />
-      </section>
+      </SectionCard>
 
-      <section>
-        <h3>Architecture decision records</h3>
+      <SectionCard title="Architecture decision records" count={architecture.adrs.length}>
         <RepeatableList<Adr>
           items={architecture.adrs}
           addLabel="Add ADR"
@@ -155,7 +152,7 @@ export function ArchitectureForm() {
           onRemove={i => replaceArch({ adrs: architecture.adrs.filter((_, idx) => idx !== i) })}
           renderItem={(adr) => (
             <div>
-              <div className="id-tag">{adr.id}</div>
+              <Badge className="mb-2">{adr.id}</Badge>
               <TextField
                 label="Title"
                 value={adr.title}
@@ -216,7 +213,7 @@ export function ArchitectureForm() {
                 })}
               />
 
-              <h4>Options</h4>
+              <h4 className={subheadingClass}>Options</h4>
               <RepeatableList<AdrOption>
                 items={adr.options}
                 addLabel="Add option"
@@ -287,7 +284,7 @@ export function ArchitectureForm() {
             </div>
           )}
         />
-      </section>
+      </SectionCard>
     </div>
   );
 }

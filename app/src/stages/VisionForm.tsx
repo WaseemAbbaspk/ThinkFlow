@@ -1,5 +1,6 @@
 import { useProject } from '../state/projectStore';
 import { TextField, TextArea, RepeatableList } from '../components/inputs';
+import { SectionCard } from '@/components/SectionCard';
 import type { Problem, Beneficiary, AssumptionRisk } from '../model/types';
 
 function nextProblemId(problems: Problem[]): string {
@@ -17,22 +18,25 @@ export function VisionForm() {
 
   return (
     <div className="vision-form">
-      <TextArea
-        label="Vision statement"
-        value={vision.statement}
-        onChange={v => patch({ statement: v })}
-      />
-      <TextArea
-        label="Why now"
-        value={vision.whyNow}
-        onChange={v => patch({ whyNow: v })}
-      />
-      <TextArea
-        label="Success narrative"
-        value={vision.successNarrative}
-        onChange={v => patch({ successNarrative: v })}
-      />
+      <SectionCard title="Vision">
+        <TextArea
+          label="Vision statement"
+          value={vision.statement}
+          onChange={v => patch({ statement: v })}
+        />
+        <TextArea
+          label="Why now"
+          value={vision.whyNow}
+          onChange={v => patch({ whyNow: v })}
+        />
+        <TextArea
+          label="Success narrative"
+          value={vision.successNarrative}
+          onChange={v => patch({ successNarrative: v })}
+        />
+      </SectionCard>
 
+      <SectionCard title="Problems" count={vision.problems.length}>
       <RepeatableList<Problem>
         items={vision.problems}
         addLabel="Add problem"
@@ -48,7 +52,9 @@ export function VisionForm() {
           />
         )}
       />
+      </SectionCard>
 
+      <SectionCard title="Beneficiaries" count={vision.beneficiaries.length}>
       <RepeatableList<Beneficiary>
         items={vision.beneficiaries}
         addLabel="Add beneficiary"
@@ -73,7 +79,9 @@ export function VisionForm() {
           </>
         )}
       />
+      </SectionCard>
 
+      <SectionCard title="Non-goals" count={vision.nonGoals.length}>
       <RepeatableList<string>
         items={vision.nonGoals}
         addLabel="Add non-goal"
@@ -89,7 +97,9 @@ export function VisionForm() {
           />
         )}
       />
+      </SectionCard>
 
+      <SectionCard title="Assumptions" count={vision.assumptions.length}>
       <RepeatableList<AssumptionRisk>
         items={vision.assumptions}
         addLabel="Add assumption"
@@ -114,7 +124,9 @@ export function VisionForm() {
           </>
         )}
       />
+      </SectionCard>
 
+      <SectionCard title="Risks" count={vision.risks.length}>
       <RepeatableList<AssumptionRisk>
         items={vision.risks}
         addLabel="Add risk"
@@ -139,6 +151,7 @@ export function VisionForm() {
           </>
         )}
       />
+      </SectionCard>
     </div>
   );
 }
