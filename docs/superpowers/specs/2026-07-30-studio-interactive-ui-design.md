@@ -200,12 +200,34 @@ dnd-kit's `KeyboardSensor` gives arrow-key dragging with no extra work; it is
 enabled alongside `PointerSensor`. Each card additionally carries a plain status
 `<select>` labelled `Status`, so changing status never requires a drag.
 
-jsdom cannot simulate pointer physics, so tests exercise:
-- the status `<select>` fallback → asserts `UPDATE_TASK`,
-- the `KeyboardSensor` path (space, arrow, space) → asserts the reorder,
-- column membership and counts as a function of state.
+jsdom has no layout — every `getBoundingClientRect` is zeroes — and dnd-kit
+resolves drops by measuring rects. So neither a mouse drag *nor* a keyboard drag
+can be tested honestly through the DOM.
 
-No test pretends to mouse-drag.
+Instead the drop decision is extracted into a pure module,
+`app/src/components/taskBoardDnd.ts`, and the dnd-kit wiring stays thin enough to
+carry no logic worth testing:
+
+```ts
+export type BoardDrop =
+  | { kind: 'status'; status: TaskStatus }
+  | { kind: 'reorder'; from: string; to: string }
+  | { kind: 'status+reorder'; status: TaskStatus; from: string; to: string };
+
+/** `overId` is a task id, or a column id of the form `column:Todo`. */
+export function resolveDrop(tasks: Task[], activeId: string, overId: string): BoardDrop | null;
+```
+
+Tests then cover:
+- `resolveDrop` exhaustively — drop on empty column, on a card in another column,
+  on a card in the same column, on itself, and with unknown ids,
+- the status `<select>` fallback → asserts `UPDATE_TASK`,
+- column membership and counts as a function of state,
+- `REORDER_TASKS` in the reducer.
+
+`KeyboardSensor` is still enabled for the real accessibility benefit, but its
+drag path is verified manually in a browser, not asserted in jsdom. No test
+pretends to drag.
 
 ---
 
@@ -237,9 +259,18 @@ edits**. This is the point of keeping the signature — the churn stays in one f
 
 ### C4. Test cost
 
-Six `userEvent.selectOptions` assertions across `App.integration.test.tsx` and
-`inputs.test.tsx` target link fields and must be rewritten to click-based
-interaction. `selectOptions` calls that target `SelectField` enums are untouched.
+**Four** `userEvent.selectOptions` assertions target link fields and must be
+rewritten to click-based interaction:
+
+| File | Line | Field |
+|---|---|---|
+| `App.integration.test.tsx` | 14 | Serves goal |
+| `App.integration.test.tsx` | 18 | Traces to |
+| `App.integration.test.tsx` | 21 | Verifies |
+| `inputs.test.tsx` | 52 | Traces to (also asserts `toHaveAttribute('multiple')`) |
+
+`inputs.test.tsx:35` targets `SelectField` and is deliberately **untouched** —
+it is the test that pins the enum controls to native `<select>`.
 
 ---
 
@@ -250,8 +281,10 @@ interaction. `selectOptions` calls that target `SelectField` enums are untouched
 `app/src/components/CommandPalette.tsx` — cmdk inside a Radix Dialog, mounted in
 `AppShell`. Opens on Ctrl+K / Cmd+K, closes on Escape.
 
-The global key handler ignores the shortcut while focus is in a text input,
-textarea, or select, so typing is never hijacked.
+Modifier-based shortcuts (Ctrl+K, Ctrl+1..5) fire everywhere, including inside
+text fields — that is the convention and they cannot collide with typing. The
+unmodified `?` shortcut is the only one that needs a guard, and it is ignored
+whenever focus is in an input, textarea, select, or contenteditable.
 
 ### D2. Groups
 
@@ -260,10 +293,16 @@ textarea, or select, so typing is never hijacked.
 | Go to | Vision, Requirements, Architecture, Tasks, Testing, Traceability, Export |
 | Create | Goal, Story, NFR, ADR, Task, Test |
 | Jump to entity | every entity from `entityIndex` (A3), searchable by id and title |
-| Actions | Export Markdown, Export JSON, Export ZIP, Toggle theme |
+| Actions | Go to export, Toggle theme |
 
 **Create** dispatches the matching `ADD_*` action and navigates to that stage.
 **Jump to entity** navigates to the owning view.
+
+The Actions group routes to the Export stage rather than invoking Markdown /
+JSON / ZIP directly. Those handlers are currently local to `ExportPanel` and are
+not callable from outside it; lifting them out is a refactor this work does not
+need, and one extra keystroke is a fair price for not disturbing a tested
+component.
 
 ### D3. Shortcuts
 
@@ -317,8 +356,9 @@ Roughly 30 new tests, taking the suite from 100 to ~130:
 - `DiagramView.test.tsx` — empty / error / rendered states, source toggle,
   node-click dispatch. mermaid is mocked; the real library is not exercised in
   jsdom, which cannot lay out SVG.
-- `TaskBoard.test.tsx` — column membership, counts, status fallback, keyboard
-  reorder, click-to-edit.
+- `taskBoardDnd.test.ts` — `resolveDrop` across all five drop shapes.
+- `TaskBoard.test.tsx` — column membership, counts, status fallback,
+  click-to-edit.
 - `projectStore.test.tsx` — `REORDER_TASKS` including both no-op cases.
 - `Combobox.test.tsx` — filtering, single and multiple select, chip removal.
 - `CommandPalette.test.tsx` — open/close, each group, the input-focus guard.
@@ -345,6 +385,7 @@ bisect.
 | mermaid inflates first paint | Dynamic import + CI bundle budget |
 | Crafted project file injects script via diagram source | `securityLevel: 'strict'`, `htmlLabels: false` |
 | mermaid render errors crash the stage | Error state renders inline; render wrapped in try/catch |
-| Combobox rewrite silently breaks link editing | `LinkSelect` signature frozen; six assertions rewritten deliberately, not deleted |
+| Combobox rewrite silently breaks link editing | `LinkSelect` signature frozen; four assertions rewritten deliberately, not deleted |
 | Drag-only status change excludes keyboard users | `KeyboardSensor` + a status `<select>` on every card |
+| Drag logic untestable in jsdom | Decision extracted to pure `resolveDrop`; dnd-kit wiring kept logic-free |
 | Palette shortcut hijacks typing | Handler ignores events originating in form fields |
