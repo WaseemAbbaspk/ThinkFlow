@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
+import { ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/state/theme';
 import { loadMermaid } from '@/lib/mermaid';
@@ -76,28 +78,45 @@ export function DiagramView({ source, label, onNodeClick, debounceMs = 300 }: Di
         </p>
       )}
 
-      <div className="flex justify-end">
-        <Button variant="ghost" size="sm" onClick={() => setShowSource(s => !s)}>
-          View source
-        </Button>
-      </div>
+      <TransformWrapper doubleClick={{ disabled: true }}>
+        {({ zoomIn, zoomOut, resetTransform }) => (
+          <>
+            <div className="flex justify-end gap-1">
+              <Button variant="ghost" size="icon" aria-label="Zoom in" onClick={() => zoomIn()}>
+                <ZoomIn aria-hidden="true" />
+              </Button>
+              <Button variant="ghost" size="icon" aria-label="Zoom out" onClick={() => zoomOut()}>
+                <ZoomOut aria-hidden="true" />
+              </Button>
+              <Button variant="ghost" size="icon" aria-label="Reset view" onClick={() => resetTransform()}>
+                <Maximize aria-hidden="true" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setShowSource(s => !s)}>
+                View source
+              </Button>
+            </div>
 
-      {/* dangerouslySetInnerHTML is safe here only because of how the SVG was produced:
-          mermaid ran with securityLevel 'strict', under which it HTML-encodes label text,
-          refuses `click` directives, and pipes its own output through DOMPurify (a direct
-          mermaid dependency, 3.4.12). A second sanitiser pass here would be redundant and
-          would risk stripping legitimate SVG that mermaid's own profile allows.
-          If securityLevel in lib/mermaid.ts is ever relaxed, this line becomes an XSS hole. */}
-      <div
-        role="img"
-        aria-label={label}
-        onClick={handleClick}
-        className={cn(
-          'overflow-auto rounded-[6px] border border-border bg-card p-3',
-          error && 'opacity-50',
+            <TransformComponent>
+              {/* dangerouslySetInnerHTML is safe here only because of how the SVG was produced:
+                  mermaid ran with securityLevel 'strict', under which it HTML-encodes label text,
+                  refuses `click` directives, and pipes its own output through DOMPurify (a direct
+                  mermaid dependency, 3.4.12). A second sanitiser pass here would be redundant and
+                  would risk stripping legitimate SVG that mermaid's own profile allows.
+                  If securityLevel in lib/mermaid.ts is ever relaxed, this becomes an XSS hole. */}
+              <div
+                role="img"
+                aria-label={label}
+                onClick={handleClick}
+                className={cn(
+                  'overflow-auto rounded-[6px] border border-border bg-card p-3',
+                  error && 'opacity-50',
+                )}
+                dangerouslySetInnerHTML={{ __html: svg }}
+              />
+            </TransformComponent>
+          </>
         )}
-        dangerouslySetInnerHTML={{ __html: svg }}
-      />
+      </TransformWrapper>
 
       {showSource && (
         <pre className="overflow-auto rounded-[6px] border border-border bg-muted p-3 font-mono text-[12.5px] leading-relaxed">

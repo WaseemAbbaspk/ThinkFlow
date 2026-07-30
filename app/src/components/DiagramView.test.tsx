@@ -14,6 +14,17 @@ vi.mock('mermaid', () => ({
   },
 }));
 
+// jsdom has no layout, so the real TransformWrapper measures zeroes. Passthrough stub.
+vi.mock('react-zoom-pan-pinch', () => ({
+  TransformWrapper: ({ children }: { children: unknown }) =>
+    typeof children === 'function'
+      ? (children as (c: unknown) => React.ReactNode)({
+          zoomIn: vi.fn(), zoomOut: vi.fn(), resetTransform: vi.fn(),
+        })
+      : (children as React.ReactNode),
+  TransformComponent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}));
+
 function renderDiagram(ui: React.ReactElement) {
   return render(<ThemeProvider>{ui}</ThemeProvider>);
 }
@@ -69,5 +80,32 @@ describe('DiagramView', () => {
 
     expect(await screen.findByText(/parse error on line 3/i)).toBeInTheDocument();
     expect(container.querySelector('svg')).toBeInTheDocument();
+  });
+
+  it('offers zoom and reset controls', async () => {
+    renderDiagram(<DiagramView source={SOURCE} label="Chain" debounceMs={0} />);
+    await screen.findByRole('button', { name: /zoom in/i });
+    expect(screen.getByRole('button', { name: /zoom out/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /reset view/i })).toBeInTheDocument();
+  });
+
+  it('reports the clicked node label', async () => {
+    const onNodeClick = vi.fn();
+    const { container } = renderDiagram(
+      <DiagramView source={SOURCE} label="Chain" debounceMs={0} onNodeClick={onNodeClick} />,
+    );
+    await waitFor(() => expect(container.querySelector('.node')).toBeInTheDocument());
+    await userEvent.click(container.querySelector('.node text')!);
+    expect(onNodeClick).toHaveBeenCalledWith('US-1');
+  });
+
+  it('ignores clicks that miss a node', async () => {
+    const onNodeClick = vi.fn();
+    const { container } = renderDiagram(
+      <DiagramView source={SOURCE} label="Chain" debounceMs={0} onNodeClick={onNodeClick} />,
+    );
+    await waitFor(() => expect(container.querySelector('svg')).toBeInTheDocument());
+    await userEvent.click(screen.getByRole('img', { name: 'Chain' }));
+    expect(onNodeClick).not.toHaveBeenCalled();
   });
 });
