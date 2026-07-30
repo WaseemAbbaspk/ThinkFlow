@@ -1,6 +1,7 @@
 import { useProject } from '../state/projectStore';
 import { TextField, TextArea, SelectField, LinkSelect, RepeatableList } from '../components/inputs';
 import { SectionCard } from '@/components/SectionCard';
+import { DiagramView } from '@/components/DiagramView';
 import { Badge } from '@/components/ui/badge';
 import { subheadingClass } from '@/components/typography';
 import type { Component, Flow, NfrConsideration, Adr, AdrOption, AdrStatus } from '../model/types';
@@ -47,11 +48,14 @@ export function ArchitectureForm() {
           value={architecture.contextDiagram}
           onChange={v => replaceArch({ contextDiagram: v })}
         />
+        <DiagramView source={architecture.contextDiagram} label="Context diagram" />
+
         <TextArea
           label="Component diagram (Mermaid)"
           value={architecture.componentDiagram}
           onChange={v => replaceArch({ componentDiagram: v })}
         />
+        <DiagramView source={architecture.componentDiagram} label="Component diagram" />
       </SectionCard>
 
       <SectionCard title="Components" count={architecture.components.length}>

@@ -12,6 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { DiagramView } from '@/components/DiagramView';
+import { entityIndex } from '@/model/registry';
 import type { Project } from '@/model/types';
 import { cn } from '@/lib/utils';
 
@@ -88,7 +90,7 @@ function GapPanel({ gaps }: { gaps: Gap[] }) {
 const columnHelper = createColumnHelper<MatrixRow>();
 
 export function TraceabilityView() {
-  const { state } = useProject();
+  const { state, dispatch } = useProject();
   const project = state.project;
   const rows = useMemo(() => buildMatrix(project), [project]);
   const gaps = detectGaps(project);
@@ -189,9 +191,14 @@ export function TraceabilityView() {
             Copy
           </Button>
         </div>
-        <pre className="overflow-auto rounded-[6px] border border-border bg-muted p-3 font-mono text-[12.5px] leading-relaxed">
-          {mermaid}
-        </pre>
+        <DiagramView
+          source={mermaid}
+          label="Traceability chain"
+          onNodeClick={id => {
+            const target = entityIndex(project).get(id);
+            if (target) dispatch({ type: 'SET_VIEW', view: target.view });
+          }}
+        />
       </SectionCard>
     </div>
   );
