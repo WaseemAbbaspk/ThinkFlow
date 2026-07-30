@@ -53,10 +53,15 @@ describe('DiagramView', () => {
   });
 
   it('exposes the source behind a View source toggle', async () => {
-    renderDiagram(<DiagramView source={SOURCE} label="Chain" debounceMs={0} />);
-    expect(screen.queryByText(SOURCE)).not.toBeInTheDocument();
+    /* Assert on the <pre> textContent rather than getByText: the source is multi-line,
+       and Testing Library collapses whitespace in node text while comparing against the
+       raw matcher string, so a multi-line matcher can never match. */
+    const { container } = renderDiagram(
+      <DiagramView source={SOURCE} label="Chain" debounceMs={0} />,
+    );
+    expect(container.querySelector('pre')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: /view source/i }));
-    expect(screen.getByText(SOURCE)).toBeInTheDocument();
+    expect(container.querySelector('pre')?.textContent).toBe(SOURCE);
   });
 
   it('shows the parse error when nothing has ever rendered', async () => {
