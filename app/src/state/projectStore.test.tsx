@@ -137,6 +137,37 @@ describe('reducer', () => {
     s = reducer(s, { type: 'DELETE_TEST', id: tid });
     expect(s.project.testing.tests).toHaveLength(0);
   });
+
+  it('starts with nothing selected', () => {
+    expect(initialState().selectedId).toBeNull();
+  });
+
+  it('SELECT_ENTITY sets both the view and the id', () => {
+    const s = reducer(initialState(), { type: 'SELECT_ENTITY', view: 'tasks', id: 'TASK-1' });
+    expect(s.view).toBe('tasks');
+    expect(s.selectedId).toBe('TASK-1');
+  });
+
+  it('SET_VIEW clears the selection', () => {
+    let s = reducer(initialState(), { type: 'SELECT_ENTITY', view: 'tasks', id: 'TASK-1' });
+    s = reducer(s, { type: 'SET_VIEW', view: 'testing' });
+    expect(s.selectedId).toBeNull();
+  });
+
+  it('clears the selection when the selected entity is deleted', () => {
+    let s = reducer(initialState(), { type: 'ADD_TASK' });
+    s = reducer(s, { type: 'SELECT_ENTITY', view: 'tasks', id: 'TASK-1' });
+    s = reducer(s, { type: 'DELETE_TASK', id: 'TASK-1' });
+    expect(s.selectedId).toBeNull();
+  });
+
+  it('keeps the selection when a different entity is deleted', () => {
+    let s = reducer(initialState(), { type: 'ADD_TASK' });
+    s = reducer(s, { type: 'ADD_TASK' });
+    s = reducer(s, { type: 'SELECT_ENTITY', view: 'tasks', id: 'TASK-1' });
+    s = reducer(s, { type: 'DELETE_TASK', id: 'TASK-2' });
+    expect(s.selectedId).toBe('TASK-1');
+  });
 });
 
 describe('id reclamation on delete', () => {

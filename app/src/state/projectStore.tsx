@@ -12,13 +12,17 @@ import {
 } from '../model/types';
 import { nextId } from '../model/ids';
 import { reclaimCounters } from '../model/reclaim';
+import { entityIndex } from '../model/registry';
 
 export type View = 'vision'|'requirements'|'architecture'|'tasks'|'testing'|'traceability'|'export';
-export interface State { project: Project; view: View; }
-export const initialState = (): State => ({ project: emptyProject('Untitled Project'), view: 'vision' });
+export interface State { project: Project; view: View; selectedId: string | null; }
+export const initialState = (): State => ({
+  project: emptyProject('Untitled Project'), view: 'vision', selectedId: null,
+});
 
 export type Action =
   | { type: 'SET_VIEW'; view: View }
+  | { type: 'SELECT_ENTITY'; view: View; id: string | null }
   | { type: 'REPLACE_PROJECT'; project: Project }
   | { type: 'PATCH_VISION'; patch: Partial<Project['vision']> }
   | { type: 'PATCH_META'; patch: Partial<Project['meta']> }
@@ -33,10 +37,11 @@ export type Action =
 function touch(p: Project): Project { return { ...p, meta: { ...p.meta, updatedAt: new Date().toISOString() } }; }
 function storyNumber(id: string): number { return parseInt(id.split('-')[1], 10); }
 
-export function reducer(state: State, action: Action): State {
+function baseReducer(state: State, action: Action): State {
   const p = state.project;
   switch (action.type) {
-    case 'SET_VIEW': return { ...state, view: action.view };
+    case 'SET_VIEW': return { ...state, view: action.view, selectedId: null };
+    case 'SELECT_ENTITY': return { ...state, view: action.view, selectedId: action.id };
     case 'REPLACE_PROJECT': return { ...state, project: action.project };
     case 'PATCH_VISION':
       return { ...state, project: touch({ ...p, vision: { ...p.vision, ...action.patch } }) };
@@ -170,10 +175,24 @@ export function reducer(state: State, action: Action): State {
   }
 }
 
+/**
+ * Selection must never point at an entity that no longer exists — deleting the
+ * selected record has to close the inspector rather than leave it rendering a
+ * stale row. Checking after the fact means every DELETE_* case gets this for
+ * free instead of each one remembering to clear.
+ */
+export function reducer(state: State, action: Action): State {
+  const next = baseReducer(state, action);
+  if (next.selectedId !== null && !entityIndex(next.project).has(next.selectedId)) {
+    return { ...next, selectedId: null };
+  }
+  return next;
+}
+
 const Ctx = createContext<{ state: State; dispatch: Dispatch<Action> } | null>(null);
 export function ProjectProvider({ children, preload }: { children: React.ReactNode; preload?: Project }) {
   const [state, dispatch] = useReducer<React.Reducer<State, Action>, undefined>(reducer, undefined, () =>
-    preload ? { project: preload, view: 'vision' } : initialState());
+    preload ? { project: preload, view: 'vision', selectedId: null } : initialState());
   return <Ctx.Provider value={{ state, dispatch }}>{children}</Ctx.Provider>;
 }
 export function useProject() {
