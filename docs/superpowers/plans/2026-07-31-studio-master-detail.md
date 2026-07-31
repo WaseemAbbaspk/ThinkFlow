@@ -34,7 +34,9 @@
   | `Search tasks` / `Search stories` / … | Each `ListDetail` search box needs a unique label |
   | `Details` (the `<aside>`) | Lets tests assert the rail's presence/absence |
 - **A row is a single `<button>`.** Never nest a checkbox, kebab menu, or any other interactive element inside `renderRow` — a button inside a button is invalid HTML and breaks Testing Library role queries. This is the same trap that forced `Combobox` chips outside their trigger.
-- **Never address a list row by array index.** Every add, update and delete goes through an id-keyed action. Index addressing is what this plan exists to remove.
+- **Never address a `ListDetail` row by array index.** Anything rendered through `ListDetail` is sortable and filterable, so a visible index no longer matches the model index — every add, update and delete for those rows goes through an id-keyed action. Removing that class of bug is why this plan exists.
+  - **Carve-out:** `RepeatableList` stays index-based. It is used for nested, unsorted collections (a story's criteria, a task's acceptance lines) and for the three bare `string[]` fields (assumptions, constraints, non-goals) that have no ids at all. Where an index *is* used, resolve it to an id immediately and dispatch the id-keyed action — never pass the index into the reducer.
+- **Accessible-name collision to design around.** A `ListDetail` row button's name is its whole text content (e.g. `US-1 Log in Must 0 criteria`), and the open inspector adds `Delete US-1` and `Duplicate US-1`. So `getByRole('button', { name: /US-1/ })` is **ambiguous whenever that row is selected**. Match the row with a leading anchor — `/^US-1/` — or query it before selecting. Likewise `getByText(/US-1/)` matches the row badge *and* the inspector's badge *and* its heading once selected; use `getAllByText` or an anchored role query.
 - `useTheme()` throws outside `ThemeProvider` and `useConfirm()` throws outside `ConfirmProvider`. Any test rendering a component that reaches either must use `renderWithProviders` from `@/test/renderWithProviders`, not a bare `<ProjectProvider>`.
 
 ---
@@ -1889,7 +1891,9 @@ describe('RequirementsForm', () => {
     expect(await screen.findByText('Delete US-1?')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
 
-    expect(screen.getByText(/US-1/)).toBeInTheDocument();
+    // US-1 is still selected here, so its id appears on the row badge, the
+    // inspector badge and the inspector heading. Anchor to the row button.
+    expect(screen.getByRole('button', { name: /^US-1/ })).toBeInTheDocument();
   });
 
   it('removes the story when the delete dialog is confirmed', async () => {
