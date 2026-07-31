@@ -38,7 +38,11 @@ export function TestingForm() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <SectionCard title="Entry / exit criteria" defaultOpen={false}>
+      {/* Left open by default, matching the pre-rebuild behaviour. Do NOT pass
+          defaultOpen={false}: SectionCard's Radix Collapsible UNMOUNTS its content
+          when closed, so the entry/exit fields would not be in the DOM at all —
+          both the test below and anyone expecting to see them would lose them. */}
+      <SectionCard title="Entry / exit criteria">
         <TextArea
           label="Entry criteria"
           value={testing.entryCriteria}
