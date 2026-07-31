@@ -299,17 +299,23 @@ describe('id reclamation on delete', () => {
     s = reducer(s, { type: 'UPDATE_STORY', id: 'US-1', patch: { want: 'log in' } });
     s = reducer(s, { type: 'ADD_CRITERION', storyId: 'US-1' });
     s = reducer(s, { type: 'UPDATE_CRITERION', id: 'AC-1.1', patch: { text: 'password works' } });
+    /* TWO criteria, deliberately. With only one, a broken implementation that read
+       p.meta.counters on every loop pass instead of threading `running` would pass
+       this test anyway — there would be no second allocation to collide with. The
+       second criterion is what makes this test able to fail. */
+    s = reducer(s, { type: 'ADD_CRITERION', storyId: 'US-1' });
+    s = reducer(s, { type: 'UPDATE_CRITERION', id: 'AC-1.2', patch: { text: 'lockout works' } });
     s = reducer(s, { type: 'DUPLICATE_STORY', id: 'US-1' });
 
     expect(s.project.requirements.stories.map(x => x.id)).toEqual(['US-1', 'US-2']);
     expect(s.project.requirements.stories[1].want).toBe('log in');
 
     const copied = s.project.requirements.criteria.filter(c => c.storyId === 'US-2');
-    expect(copied.map(c => c.id)).toEqual(['AC-2.1']);
-    expect(copied[0].text).toBe('password works');
+    expect(copied.map(c => c.id)).toEqual(['AC-2.1', 'AC-2.2']);
+    expect(copied.map(c => c.text)).toEqual(['password works', 'lockout works']);
 
     // the original is untouched
-    expect(s.project.requirements.criteria.filter(c => c.storyId === 'US-1')).toHaveLength(1);
+    expect(s.project.requirements.criteria.filter(c => c.storyId === 'US-1')).toHaveLength(2);
   });
 
   it('DUPLICATE_STORY on a missing id changes nothing', () => {
