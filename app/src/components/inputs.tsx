@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2 } from 'lucide-react';
+import { Combobox } from '@/components/Combobox';
 import { cn } from '@/lib/utils';
 
 /* Radix Select has no multiple-selection mode, and the stage forms are driven in tests via
@@ -63,27 +64,12 @@ export interface LinkSelectProps {
   label: string; value: string | string[]; options: SelectOption[];
   onChange: (value: string | string[]) => void; multiple?: boolean;
 }
+/* Entity links go through a typeahead Combobox. The signature is deliberately unchanged
+   so the six call sites in the stage forms need no edits. SelectField below stays a
+   native <select> — short fixed enums are better served by the platform control. */
 export function LinkSelect({ label, value, options, onChange, multiple }: LinkSelectProps) {
-  const id = useId();
-  function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    if (multiple) {
-      onChange(Array.from(e.target.selectedOptions).map(o => o.value));
-    } else {
-      onChange(e.target.value);
-    }
-  }
   return (
-    <Field id={id} label={label}>
-      <select
-        id={id}
-        multiple={multiple}
-        className={cn(selectClass, multiple && 'min-h-24')}
-        value={value}
-        onChange={handleChange}
-      >
-        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
-    </Field>
+    <Combobox label={label} value={value} options={options} multiple={multiple} onChange={onChange} />
   );
 }
 

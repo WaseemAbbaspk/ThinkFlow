@@ -36,7 +36,7 @@ describe('inputs', () => {
     expect(onChange).toHaveBeenCalledWith('Should');
   });
 
-  it('LinkSelect supports multiple selection', async () => {
+  it('LinkSelect is a combobox that reports an array in multiple mode', async () => {
     const onChange = vi.fn();
     render(
       <LinkSelect
@@ -47,9 +47,8 @@ describe('inputs', () => {
         onChange={onChange}
       />,
     );
-    const select = screen.getByLabelText('Traces to');
-    expect(select).toHaveAttribute('multiple');
-    await userEvent.selectOptions(select, 'US-2');
+    await userEvent.click(screen.getByLabelText('Traces to'));
+    await userEvent.click(await screen.findByRole('option', { name: 'US-2' }));
     expect(onChange).toHaveBeenCalledWith(['US-2']);
   });
 

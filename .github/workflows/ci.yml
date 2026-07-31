@@ -20,5 +20,7 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
-      - name: Bundle size
-        run: ls -la dist/assets/
+      - name: Bundle budget
+        run: |
+          ls -la dist/assets/
+          node scripts/bundleSize.mjs 200

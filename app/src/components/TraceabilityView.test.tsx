@@ -1,12 +1,41 @@
-import { it, expect } from 'vitest';
+import React from 'react';
+import { it, expect, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ProjectProvider } from '../state/projectStore';
+import { ThemeProvider } from '@/state/theme';
 import { TraceabilityView } from './TraceabilityView';
 import { emptyProject, type Project } from '../model/types';
 
+/* This file is about the matrix, the gaps and the chain source — not about mermaid.
+   Mocking keeps the real 800 kB library (and its d3/cytoscape deps) out of jsdom. */
+vi.mock('mermaid', () => ({
+  default: {
+    initialize: vi.fn(),
+    render: vi.fn().mockResolvedValue({ svg: '<svg></svg>' }),
+  },
+}));
+
+vi.mock('react-zoom-pan-pinch', () => ({
+  TransformWrapper: ({ children }: { children: unknown }) =>
+    typeof children === 'function'
+      ? (children as (c: unknown) => React.ReactNode)({
+          zoomIn: vi.fn(), zoomOut: vi.fn(), resetTransform: vi.fn(),
+        })
+      : (children as React.ReactNode),
+  TransformComponent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}));
+
+function renderView(preload?: Project) {
+  return render(
+    <ThemeProvider>
+      <ProjectProvider preload={preload}><TraceabilityView /></ProjectProvider>
+    </ThemeProvider>,
+  );
+}
+
 it('shows the no-gaps message for an empty project', () => {
-  render(<ProjectProvider><TraceabilityView /></ProjectProvider>);
+  renderView();
   expect(screen.getByText(/No gaps/i)).toBeInTheDocument();
 });
 
@@ -27,7 +56,7 @@ function tracedProject(): Project {
 }
 
 it('renders a fully-traced matrix row with its task and test ids', () => {
-  render(<ProjectProvider preload={tracedProject()}><TraceabilityView /></ProjectProvider>);
+  renderView(tracedProject());
   const row = screen.getByText('AC-1.1').closest('tr')!;
   expect(within(row).getByText('US-1')).toBeInTheDocument();
   expect(within(row).getByText('GOAL-1')).toBeInTheDocument();
@@ -37,20 +66,25 @@ it('renders a fully-traced matrix row with its task and test ids', () => {
   expect(screen.getByText(/No gaps/i)).toBeInTheDocument();
 });
 
-it('sanitizes dotted AC ids in the Mermaid chain but keeps the original label', () => {
-  const { container } = render(
-    <ProjectProvider preload={tracedProject()}><TraceabilityView /></ProjectProvider>,
-  );
+it('sanitizes dotted AC ids in the Mermaid chain but keeps the original label', async () => {
+  const { container } = renderView(tracedProject());
+  // the source now sits behind the View source toggle
+  await userEvent.click(screen.getByRole('button', { name: /view source/i }));
   const chain = container.querySelector('pre')!.textContent ?? '';
   expect(chain).toContain('flowchart LR');
   expect(chain).toContain('AC_1_1["AC-1.1"]'); // dot & hyphen sanitized in node id, original id in label
   expect(chain).toContain('GOAL-1'); // goal -> story edge present
 });
 
+it('renders the traceability chain as a diagram', async () => {
+  renderView(tracedProject());
+  expect(await screen.findByRole('img', { name: /traceability chain/i })).toBeInTheDocument();
+});
+
 it('lists a gap message when a criterion is untested', () => {
   const p = tracedProject();
   p.testing.tests = []; // AC-1.1 now has no verifying test
-  render(<ProjectProvider preload={p}><TraceabilityView /></ProjectProvider>);
+  renderView(p);
   expect(screen.getByText(/AC-1\.1 has no test verifying it/i)).toBeInTheDocument();
   expect(screen.queryByText(/No gaps/i)).not.toBeInTheDocument();
 });
@@ -61,7 +95,7 @@ it('filters matrix rows by the filter box', async () => {
     { id: 'US-1', role: '', want: '', benefit: '', priority: 'Must', servesGoalId: null },
     { id: 'US-2', role: '', want: '', benefit: '', priority: 'Must', servesGoalId: null },
   );
-  render(<ProjectProvider preload={p}><TraceabilityView /></ProjectProvider>);
+  renderView(p);
   expect(screen.getByText('US-2')).toBeInTheDocument();
 
   await userEvent.type(screen.getByLabelText(/filter rows/i), 'US-1');
