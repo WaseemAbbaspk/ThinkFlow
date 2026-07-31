@@ -245,9 +245,18 @@ Append to the top-level `describe` in `app/src/state/projectStore.test.tsx`:
   });
 
   it('SELECT_ENTITY sets both the view and the id', () => {
-    const s = reducer(initialState(), { type: 'SELECT_ENTITY', view: 'tasks', id: 'TASK-1' });
+    // The entity must exist first: the reducer wrapper prunes a selection that
+    // names nothing, and that pruning runs on EVERY action, including this one.
+    let s = reducer(initialState(), { type: 'ADD_TASK' });
+    s = reducer(s, { type: 'SELECT_ENTITY', view: 'tasks', id: 'TASK-1' });
     expect(s.view).toBe('tasks');
     expect(s.selectedId).toBe('TASK-1');
+  });
+
+  it('refuses to select an id that names no entity', () => {
+    const s = reducer(initialState(), { type: 'SELECT_ENTITY', view: 'tasks', id: 'TASK-9' });
+    expect(s.view).toBe('tasks');
+    expect(s.selectedId).toBeNull();
   });
 
   it('SET_VIEW clears the selection', () => {
@@ -349,7 +358,7 @@ Finally, update `ProjectProvider`'s initializer so a preloaded project also star
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `cd app && npm test -- projectStore`
-Expected: PASS — the 5 new tests plus every pre-existing one.
+Expected: PASS — the 6 new tests plus every pre-existing one.
 
 - [ ] **Step 5: Commit**
 
