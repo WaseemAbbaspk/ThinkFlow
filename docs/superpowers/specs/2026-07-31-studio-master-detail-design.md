@@ -272,11 +272,20 @@ the rail stays absent on stages that do not use it.
 The sidebar is unchanged: `Sidebar.tsx` already renders numbered stages `01`–`05`,
 a divider, then Traceability and Export, which is exactly what the mockup shows.
 
-**Responsive.** Below the `md` breakpoint the three-pane layout collapses: the
-sidebar is already a Sheet (`MobileNav`), and the inspector becomes a second
-Sheet overlay rather than a rail. The centre list is always full-width on small
-screens. Above `md`, the rail is a fixed-width column that is present only when
-something is selected.
+**Responsive.** The rail appears at the `lg` breakpoint, not `md`. At `md`
+(768 px) the 256 px sidebar leaves ~512 px to split between list and rail, which
+is too narrow for both. Below `lg`, selecting a record makes the inspector
+**replace** the list full-width with a back button, rather than opening as an
+overlay — pure CSS visibility, no second Sheet, no focus trap to manage. The
+sidebar remains a Sheet via the existing `MobileNav`.
+
+**Row anatomy.** A row is a single `<button>` wrapping `renderRow(item)`. The
+mockup's per-row checkbox and kebab menu are **not** built: interactive elements
+nested inside a button are invalid HTML (the same trap that forced `Combobox`
+chips outside their trigger), bulk selection is not specified anywhere, and the
+kebab would only duplicate the Duplicate/Delete actions that already live in the
+inspector. One button per row also gets keyboard access and `aria-current` for
+free.
 
 ## Error handling
 
@@ -339,7 +348,8 @@ the budget.**
 | Four test files need rewriting; regressions hide in the churn | Rewrite them one stage at a time, keeping each stage's existing assertions where the flow still supports them |
 | `ListDetail` grows into a god component | Inspector chrome and the pure list logic are separate modules from the start; `ListDetail` only wires them |
 | Local toolchain cannot run `npm test` (Trend Micro) | Verify via GitHub Actions, batched — the established loop |
-| Three-pane layout on a narrow viewport | Inspector collapses to an overlay below the `md` breakpoint, reusing the existing Sheet primitive |
+| Three-pane layout on a narrow viewport | Below `lg` the inspector replaces the list full-width with a back button; no overlay, no focus trap |
+| `Delete` in the inspector collides with `Delete` in the confirm dialog | Inspector buttons are labelled `Delete <id>` / `Duplicate <id>`, so `RequirementsForm.test.tsx`'s `/^delete$/i` still resolves the dialog uniquely |
 
 ## Sequencing
 
