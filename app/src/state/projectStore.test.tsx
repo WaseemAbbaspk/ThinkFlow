@@ -143,9 +143,18 @@ describe('reducer', () => {
   });
 
   it('SELECT_ENTITY sets both the view and the id', () => {
-    const s = reducer(initialState(), { type: 'SELECT_ENTITY', view: 'tasks', id: 'TASK-1' });
+    // The entity must exist first: the reducer wrapper prunes a selection that
+    // names nothing, and that pruning runs on EVERY action, including this one.
+    let s = reducer(initialState(), { type: 'ADD_TASK' });
+    s = reducer(s, { type: 'SELECT_ENTITY', view: 'tasks', id: 'TASK-1' });
     expect(s.view).toBe('tasks');
     expect(s.selectedId).toBe('TASK-1');
+  });
+
+  it('refuses to select an id that names no entity', () => {
+    const s = reducer(initialState(), { type: 'SELECT_ENTITY', view: 'tasks', id: 'TASK-9' });
+    expect(s.view).toBe('tasks');
+    expect(s.selectedId).toBeNull();
   });
 
   it('SET_VIEW clears the selection', () => {
