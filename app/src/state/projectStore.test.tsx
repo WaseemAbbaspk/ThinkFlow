@@ -273,4 +273,48 @@ describe('id reclamation on delete', () => {
     const s1 = reducer(s0, { type: 'UPDATE_GOAL', id: 'GOAL-9', patch: { text: 'x' } });
     expect(s1.project.goals).toEqual(s0.project.goals);
   });
+
+  it('DUPLICATE_TASK copies fields under a fresh id', () => {
+    let s = reducer(initialState(), { type: 'ADD_TASK' });
+    s = reducer(s, { type: 'UPDATE_TASK', id: 'TASK-1', patch: { title: 'build it', acceptance: ['a'] } });
+    s = reducer(s, { type: 'DUPLICATE_TASK', id: 'TASK-1' });
+    expect(s.project.tasks).toHaveLength(2);
+    const copy = s.project.tasks[1];
+    expect(copy.id).toBe('TASK-2');
+    expect(copy.title).toBe('build it');
+    expect(copy.acceptance).toEqual(['a']);
+    expect(copy.acceptance).not.toBe(s.project.tasks[0].acceptance);
+  });
+
+  it('DUPLICATE_TEST copies fields under a fresh id', () => {
+    let s = reducer(initialState(), { type: 'ADD_TEST' });
+    s = reducer(s, { type: 'UPDATE_TEST', id: 'TEST-1', patch: { description: 'checks login' } });
+    s = reducer(s, { type: 'DUPLICATE_TEST', id: 'TEST-1' });
+    expect(s.project.testing.tests.map(t => t.id)).toEqual(['TEST-1', 'TEST-2']);
+    expect(s.project.testing.tests[1].description).toBe('checks login');
+  });
+
+  it('DUPLICATE_STORY clones the story and its criteria under new ids', () => {
+    let s = reducer(initialState(), { type: 'ADD_STORY' });
+    s = reducer(s, { type: 'UPDATE_STORY', id: 'US-1', patch: { want: 'log in' } });
+    s = reducer(s, { type: 'ADD_CRITERION', storyId: 'US-1' });
+    s = reducer(s, { type: 'UPDATE_CRITERION', id: 'AC-1.1', patch: { text: 'password works' } });
+    s = reducer(s, { type: 'DUPLICATE_STORY', id: 'US-1' });
+
+    expect(s.project.requirements.stories.map(x => x.id)).toEqual(['US-1', 'US-2']);
+    expect(s.project.requirements.stories[1].want).toBe('log in');
+
+    const copied = s.project.requirements.criteria.filter(c => c.storyId === 'US-2');
+    expect(copied.map(c => c.id)).toEqual(['AC-2.1']);
+    expect(copied[0].text).toBe('password works');
+
+    // the original is untouched
+    expect(s.project.requirements.criteria.filter(c => c.storyId === 'US-1')).toHaveLength(1);
+  });
+
+  it('DUPLICATE_STORY on a missing id changes nothing', () => {
+    const s0 = reducer(initialState(), { type: 'ADD_STORY' });
+    const s1 = reducer(s0, { type: 'DUPLICATE_STORY', id: 'US-9' });
+    expect(s1).toBe(s0);
+  });
 });

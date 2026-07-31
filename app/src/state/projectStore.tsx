@@ -32,7 +32,10 @@ export type Action =
   | { type: 'ADD_NFR' } | { type: 'UPDATE_NFR'; id: string; patch: Partial<Nfr> } | { type: 'DELETE_NFR'; id: string }
   | { type: 'ADD_ADR' } | { type: 'DELETE_ADR'; id: string }
   | { type: 'ADD_TASK' } | { type: 'UPDATE_TASK'; id: string; patch: Partial<Project['tasks'][number]> } | { type: 'DELETE_TASK'; id: string }
-  | { type: 'ADD_TEST' } | { type: 'UPDATE_TEST'; id: string; patch: Partial<Project['testing']['tests'][number]> } | { type: 'DELETE_TEST'; id: string };
+  | { type: 'ADD_TEST' } | { type: 'UPDATE_TEST'; id: string; patch: Partial<Project['testing']['tests'][number]> } | { type: 'DELETE_TEST'; id: string }
+  | { type: 'DUPLICATE_STORY'; id: string }
+  | { type: 'DUPLICATE_TASK'; id: string }
+  | { type: 'DUPLICATE_TEST'; id: string };
 
 function touch(p: Project): Project { return { ...p, meta: { ...p.meta, updatedAt: new Date().toISOString() } }; }
 function storyNumber(id: string): number { return parseInt(id.split('-')[1], 10); }
@@ -177,6 +180,49 @@ function baseReducer(state: State, action: Action): State {
       const counters = test ? reclaimCounters(p, { kind: 'TEST', entity: test }) : p.meta.counters;
       return { ...state, project: touch({ ...p, meta: { ...p.meta, counters },
         testing: { ...p.testing, tests: p.testing.tests.filter(t => t.id !== action.id) } }) };
+    }
+
+    case 'DUPLICATE_STORY': {
+      const src = p.requirements.stories.find(s => s.id === action.id);
+      if (!src) return state;
+      const { id, counters } = nextId(p.meta.counters, 'US');
+      const story: UserStory = { ...src, id };
+      /* Criteria come along. A story's criteria are visible in its inspector, so
+         duplicating without them would look like silent data loss. Each copy gets
+         a fresh AC id numbered under the NEW story. */
+      let running = counters;
+      const copies: Criterion[] = [];
+      for (const c of p.requirements.criteria.filter(c => c.storyId === action.id)) {
+        const allocated = nextId(running, 'AC', { storyNumber: storyNumber(id) });
+        running = allocated.counters;
+        copies.push({ ...c, id: allocated.id, storyId: id });
+      }
+      return { ...state, project: touch({ ...p, meta: { ...p.meta, counters: running },
+        requirements: { ...p.requirements,
+          stories: [...p.requirements.stories, story],
+          criteria: [...p.requirements.criteria, ...copies] } }) };
+    }
+
+    case 'DUPLICATE_TASK': {
+      const src = p.tasks.find(t => t.id === action.id);
+      if (!src) return state;
+      const { id, counters } = nextId(p.meta.counters, 'TASK');
+      const task: Task = {
+        ...src, id,
+        tracesTo: [...src.tracesTo],
+        dependsOn: [...src.dependsOn],
+        acceptance: [...src.acceptance],
+      };
+      return { ...state, project: touch({ ...p, meta: { ...p.meta, counters },
+        tasks: [...p.tasks, task] }) };
+    }
+
+    case 'DUPLICATE_TEST': {
+      const src = p.testing.tests.find(t => t.id === action.id);
+      if (!src) return state;
+      const { id, counters } = nextId(p.meta.counters, 'TEST');
+      return { ...state, project: touch({ ...p, meta: { ...p.meta, counters },
+        testing: { ...p.testing, tests: [...p.testing.tests, { ...src, id }] } }) };
     }
 
     default: return state;
