@@ -28,8 +28,8 @@ export type Action =
   | { type: 'PATCH_META'; patch: Partial<Project['meta']> }
   | { type: 'ADD_STORY' } | { type: 'UPDATE_STORY'; id: string; patch: Partial<UserStory> } | { type: 'DELETE_STORY'; id: string }
   | { type: 'ADD_CRITERION'; storyId: string } | { type: 'UPDATE_CRITERION'; id: string; patch: Partial<Criterion> } | { type: 'DELETE_CRITERION'; id: string }
-  | { type: 'ADD_GOAL' } | { type: 'DELETE_GOAL'; id: string }
-  | { type: 'ADD_NFR' } | { type: 'DELETE_NFR'; id: string }
+  | { type: 'ADD_GOAL' } | { type: 'UPDATE_GOAL'; id: string; patch: Partial<Goal> } | { type: 'DELETE_GOAL'; id: string }
+  | { type: 'ADD_NFR' } | { type: 'UPDATE_NFR'; id: string; patch: Partial<Nfr> } | { type: 'DELETE_NFR'; id: string }
   | { type: 'ADD_ADR' } | { type: 'DELETE_ADR'; id: string }
   | { type: 'ADD_TASK' } | { type: 'UPDATE_TASK'; id: string; patch: Partial<Project['tasks'][number]> } | { type: 'DELETE_TASK'; id: string }
   | { type: 'ADD_TEST' } | { type: 'UPDATE_TEST'; id: string; patch: Partial<Project['testing']['tests'][number]> } | { type: 'DELETE_TEST'; id: string };
@@ -90,6 +90,10 @@ function baseReducer(state: State, action: Action): State {
         goals: [...p.goals, goal] }) };
     }
 
+    case 'UPDATE_GOAL':
+      return { ...state, project: touch({ ...p,
+        goals: p.goals.map(g => g.id === action.id ? { ...g, ...action.patch } : g) }) };
+
     case 'DELETE_GOAL': {
       const goal = p.goals.find(g => g.id === action.id);
       const counters = goal ? reclaimCounters(p, { kind: 'GOAL', entity: goal }) : p.meta.counters;
@@ -124,6 +128,10 @@ function baseReducer(state: State, action: Action): State {
       return { ...state, project: touch({ ...p, meta: { ...p.meta, counters },
         requirements: { ...p.requirements, nfrs: [...p.requirements.nfrs, nfr] } }) };
     }
+
+    case 'UPDATE_NFR':
+      return { ...state, project: touch({ ...p, requirements: { ...p.requirements,
+        nfrs: p.requirements.nfrs.map(n => n.id === action.id ? { ...n, ...action.patch } : n) } }) };
 
     case 'ADD_ADR': {
       const { id, counters } = nextId(p.meta.counters, 'ADR');

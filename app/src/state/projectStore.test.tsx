@@ -251,4 +251,26 @@ describe('id reclamation on delete', () => {
     s = reducer(s, { type: 'ADD_CRITERION', storyId: 'US-1' });
     expect(s.project.requirements.criteria[0].id).toBe('AC-1.1');
   });
+
+  it('UPDATE_GOAL patches by id, not position', () => {
+    let s = reducer(initialState(), { type: 'ADD_GOAL' });
+    s = reducer(s, { type: 'ADD_GOAL' });
+    s = reducer(s, { type: 'UPDATE_GOAL', id: 'GOAL-2', patch: { text: 'second' } });
+    expect(s.project.goals.find(g => g.id === 'GOAL-2')?.text).toBe('second');
+    expect(s.project.goals.find(g => g.id === 'GOAL-1')?.text).toBe('');
+  });
+
+  it('UPDATE_NFR patches by id, not position', () => {
+    let s = reducer(initialState(), { type: 'ADD_NFR' });
+    s = reducer(s, { type: 'ADD_NFR' });
+    s = reducer(s, { type: 'UPDATE_NFR', id: 'NFR-2', patch: { name: 'latency' } });
+    expect(s.project.requirements.nfrs.find(n => n.id === 'NFR-2')?.name).toBe('latency');
+    expect(s.project.requirements.nfrs.find(n => n.id === 'NFR-1')?.name).toBe('');
+  });
+
+  it('UPDATE_GOAL on a missing id changes nothing', () => {
+    const s0 = reducer(initialState(), { type: 'ADD_GOAL' });
+    const s1 = reducer(s0, { type: 'UPDATE_GOAL', id: 'GOAL-9', patch: { text: 'x' } });
+    expect(s1.project.goals).toEqual(s0.project.goals);
+  });
 });
