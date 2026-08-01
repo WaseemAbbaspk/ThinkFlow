@@ -29,7 +29,7 @@ export function AppShell() {
         <Sidebar />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar saveState={saveState} />
+        <TopBar saveState={saveState} onOpenPalette={() => {}} />
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-6">
           <div
             className={cn(

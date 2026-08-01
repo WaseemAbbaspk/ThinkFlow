@@ -1,6 +1,7 @@
-import { Download, FileJson, FileArchive } from 'lucide-react';
+import { Download, FileJson, FileArchive, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProject } from '@/state/projectStore';
+import type { View } from '@/state/projectStore';
 import { renderAll } from '@/export/markdown';
 import { buildZip } from '@/export/zip';
 import { serialize } from '@/export/project';
@@ -15,6 +16,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { SaveState } from '@/state/useSaveStatus';
 
+const VIEW_LABELS: Record<View, string> = {
+  vision: 'Vision', requirements: 'Requirements', architecture: 'Architecture',
+  tasks: 'Tasks', testing: 'Testing', traceability: 'Traceability', export: 'Export',
+};
+
 function download(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -24,7 +30,7 @@ function download(filename: string, blob: Blob) {
   URL.revokeObjectURL(url);
 }
 
-export function TopBar({ saveState }: { saveState: SaveState }) {
+export function TopBar({ saveState, onOpenPalette }: { saveState: SaveState; onOpenPalette: () => void }) {
   const { state, dispatch } = useProject();
 
   async function handleZip() {
@@ -54,8 +60,22 @@ export function TopBar({ saveState }: { saveState: SaveState }) {
         value={state.project.meta.name}
         onChange={e => dispatch({ type: 'PATCH_META', patch: { name: e.target.value } })}
       />
+      <span aria-hidden="true" className="text-muted-foreground">/</span>
+      <span className="shrink-0 text-sm font-medium">{VIEW_LABELS[state.view]}</span>
       <SaveStatus state={saveState} />
-      <div className="flex-1" />
+      <div className="flex flex-1 justify-center px-4">
+        <button
+          type="button"
+          onClick={onOpenPalette}
+          className="flex w-full max-w-sm items-center gap-2 rounded-[6px] border border-input bg-muted px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent"
+        >
+          <Search aria-hidden="true" className="size-4 shrink-0" />
+          <span className="flex-1 text-left">Search anything...</span>
+          <kbd aria-hidden="true" className="rounded-[4px] border border-border px-1.5 font-mono text-[10px]">
+            Ctrl K
+          </kbd>
+        </button>
+      </div>
       <ThemeToggle />
       <Separator orientation="vertical" className="h-5" />
       {/* Named "Export actions", not "Export" — App.integration.test.tsx resolves the sidebar's
