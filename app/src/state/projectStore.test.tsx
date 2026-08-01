@@ -137,6 +137,46 @@ describe('reducer', () => {
     s = reducer(s, { type: 'DELETE_TEST', id: tid });
     expect(s.project.testing.tests).toHaveLength(0);
   });
+
+  it('starts with nothing selected', () => {
+    expect(initialState().selectedId).toBeNull();
+  });
+
+  it('SELECT_ENTITY sets both the view and the id', () => {
+    // The entity must exist first: the reducer wrapper prunes a selection that
+    // names nothing, and that pruning runs on EVERY action, including this one.
+    let s = reducer(initialState(), { type: 'ADD_TASK' });
+    s = reducer(s, { type: 'SELECT_ENTITY', view: 'tasks', id: 'TASK-1' });
+    expect(s.view).toBe('tasks');
+    expect(s.selectedId).toBe('TASK-1');
+  });
+
+  it('refuses to select an id that names no entity', () => {
+    const s = reducer(initialState(), { type: 'SELECT_ENTITY', view: 'tasks', id: 'TASK-9' });
+    expect(s.view).toBe('tasks');
+    expect(s.selectedId).toBeNull();
+  });
+
+  it('SET_VIEW clears the selection', () => {
+    let s = reducer(initialState(), { type: 'SELECT_ENTITY', view: 'tasks', id: 'TASK-1' });
+    s = reducer(s, { type: 'SET_VIEW', view: 'testing' });
+    expect(s.selectedId).toBeNull();
+  });
+
+  it('clears the selection when the selected entity is deleted', () => {
+    let s = reducer(initialState(), { type: 'ADD_TASK' });
+    s = reducer(s, { type: 'SELECT_ENTITY', view: 'tasks', id: 'TASK-1' });
+    s = reducer(s, { type: 'DELETE_TASK', id: 'TASK-1' });
+    expect(s.selectedId).toBeNull();
+  });
+
+  it('keeps the selection when a different entity is deleted', () => {
+    let s = reducer(initialState(), { type: 'ADD_TASK' });
+    s = reducer(s, { type: 'ADD_TASK' });
+    s = reducer(s, { type: 'SELECT_ENTITY', view: 'tasks', id: 'TASK-1' });
+    s = reducer(s, { type: 'DELETE_TASK', id: 'TASK-2' });
+    expect(s.selectedId).toBe('TASK-1');
+  });
 });
 
 describe('id reclamation on delete', () => {
@@ -210,5 +250,77 @@ describe('id reclamation on delete', () => {
     s = reducer(s, { type: 'DELETE_CRITERION', id: 'AC-1.1' });
     s = reducer(s, { type: 'ADD_CRITERION', storyId: 'US-1' });
     expect(s.project.requirements.criteria[0].id).toBe('AC-1.1');
+  });
+
+  it('UPDATE_GOAL patches by id, not position', () => {
+    let s = reducer(initialState(), { type: 'ADD_GOAL' });
+    s = reducer(s, { type: 'ADD_GOAL' });
+    s = reducer(s, { type: 'UPDATE_GOAL', id: 'GOAL-2', patch: { text: 'second' } });
+    expect(s.project.goals.find(g => g.id === 'GOAL-2')?.text).toBe('second');
+    expect(s.project.goals.find(g => g.id === 'GOAL-1')?.text).toBe('');
+  });
+
+  it('UPDATE_NFR patches by id, not position', () => {
+    let s = reducer(initialState(), { type: 'ADD_NFR' });
+    s = reducer(s, { type: 'ADD_NFR' });
+    s = reducer(s, { type: 'UPDATE_NFR', id: 'NFR-2', patch: { name: 'latency' } });
+    expect(s.project.requirements.nfrs.find(n => n.id === 'NFR-2')?.name).toBe('latency');
+    expect(s.project.requirements.nfrs.find(n => n.id === 'NFR-1')?.name).toBe('');
+  });
+
+  it('UPDATE_GOAL on a missing id changes nothing', () => {
+    const s0 = reducer(initialState(), { type: 'ADD_GOAL' });
+    const s1 = reducer(s0, { type: 'UPDATE_GOAL', id: 'GOAL-9', patch: { text: 'x' } });
+    expect(s1.project.goals).toEqual(s0.project.goals);
+  });
+
+  it('DUPLICATE_TASK copies fields under a fresh id', () => {
+    let s = reducer(initialState(), { type: 'ADD_TASK' });
+    s = reducer(s, { type: 'UPDATE_TASK', id: 'TASK-1', patch: { title: 'build it', acceptance: ['a'] } });
+    s = reducer(s, { type: 'DUPLICATE_TASK', id: 'TASK-1' });
+    expect(s.project.tasks).toHaveLength(2);
+    const copy = s.project.tasks[1];
+    expect(copy.id).toBe('TASK-2');
+    expect(copy.title).toBe('build it');
+    expect(copy.acceptance).toEqual(['a']);
+    expect(copy.acceptance).not.toBe(s.project.tasks[0].acceptance);
+  });
+
+  it('DUPLICATE_TEST copies fields under a fresh id', () => {
+    let s = reducer(initialState(), { type: 'ADD_TEST' });
+    s = reducer(s, { type: 'UPDATE_TEST', id: 'TEST-1', patch: { description: 'checks login' } });
+    s = reducer(s, { type: 'DUPLICATE_TEST', id: 'TEST-1' });
+    expect(s.project.testing.tests.map(t => t.id)).toEqual(['TEST-1', 'TEST-2']);
+    expect(s.project.testing.tests[1].description).toBe('checks login');
+  });
+
+  it('DUPLICATE_STORY clones the story and its criteria under new ids', () => {
+    let s = reducer(initialState(), { type: 'ADD_STORY' });
+    s = reducer(s, { type: 'UPDATE_STORY', id: 'US-1', patch: { want: 'log in' } });
+    s = reducer(s, { type: 'ADD_CRITERION', storyId: 'US-1' });
+    s = reducer(s, { type: 'UPDATE_CRITERION', id: 'AC-1.1', patch: { text: 'password works' } });
+    /* TWO criteria, deliberately. With only one, a broken implementation that read
+       p.meta.counters on every loop pass instead of threading `running` would pass
+       this test anyway — there would be no second allocation to collide with. The
+       second criterion is what makes this test able to fail. */
+    s = reducer(s, { type: 'ADD_CRITERION', storyId: 'US-1' });
+    s = reducer(s, { type: 'UPDATE_CRITERION', id: 'AC-1.2', patch: { text: 'lockout works' } });
+    s = reducer(s, { type: 'DUPLICATE_STORY', id: 'US-1' });
+
+    expect(s.project.requirements.stories.map(x => x.id)).toEqual(['US-1', 'US-2']);
+    expect(s.project.requirements.stories[1].want).toBe('log in');
+
+    const copied = s.project.requirements.criteria.filter(c => c.storyId === 'US-2');
+    expect(copied.map(c => c.id)).toEqual(['AC-2.1', 'AC-2.2']);
+    expect(copied.map(c => c.text)).toEqual(['password works', 'lockout works']);
+
+    // the original is untouched
+    expect(s.project.requirements.criteria.filter(c => c.storyId === 'US-1')).toHaveLength(2);
+  });
+
+  it('DUPLICATE_STORY on a missing id changes nothing', () => {
+    const s0 = reducer(initialState(), { type: 'ADD_STORY' });
+    const s1 = reducer(s0, { type: 'DUPLICATE_STORY', id: 'US-9' });
+    expect(s1).toBe(s0);
   });
 });

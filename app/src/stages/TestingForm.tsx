@@ -1,20 +1,25 @@
 import { useProject } from '../state/projectStore';
-import { TextField, TextArea, SelectField, LinkSelect, RepeatableList } from '../components/inputs';
+import { TextField, TextArea, SelectField, LinkSelect } from '../components/inputs';
 import { SectionCard } from '@/components/SectionCard';
+import { ListDetail } from '@/components/ListDetail';
 import { Badge } from '@/components/ui/badge';
+import type { FilterGroup, SortOption } from '@/lib/listView';
 import type { Test, TestLevel, TestStatus } from '../model/types';
 
-const LEVEL_OPTIONS = [
-  { value: 'Unit', label: 'Unit' },
-  { value: 'Integration', label: 'Integration' },
-  { value: 'E2E', label: 'E2E' },
-  { value: 'Non-functional', label: 'Non-functional' },
+const LEVELS: TestLevel[] = ['Unit', 'Integration', 'E2E', 'Non-functional'];
+const STATUSES: TestStatus[] = ['Not run', 'Fail', 'Pass'];
+const LEVEL_OPTIONS = LEVELS.map(l => ({ value: l, label: l }));
+const STATUS_OPTIONS = STATUSES.map(s => ({ value: s, label: s }));
+
+const SORTS: SortOption<Test>[] = [
+  { id: 'id', label: 'ID', compare: (a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }) },
+  { id: 'description', label: 'Description A–Z', compare: (a, b) => a.description.localeCompare(b.description) },
+  { id: 'status', label: 'Status', compare: (a, b) => STATUSES.indexOf(a.status) - STATUSES.indexOf(b.status) },
 ];
 
-const STATUS_OPTIONS = [
-  { value: 'Pass', label: 'Pass' },
-  { value: 'Fail', label: 'Fail' },
-  { value: 'Not run', label: 'Not run' },
+const FILTERS: FilterGroup<Test>[] = [
+  { id: 'level', label: 'Level', options: LEVEL_OPTIONS, matches: (t, v) => t.level === v },
+  { id: 'status', label: 'Status', options: STATUS_OPTIONS, matches: (t, v) => t.status === v },
 ];
 
 export function TestingForm() {
@@ -32,7 +37,11 @@ export function TestingForm() {
   ];
 
   return (
-    <div className="testing-form">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      {/* Left open by default, matching the pre-rebuild behaviour. Do NOT pass
+          defaultOpen={false}: SectionCard's Radix Collapsible UNMOUNTS its content
+          when closed, so the entry/exit fields would not be in the DOM at all —
+          both the test below and anyone expecting to see them would lose them. */}
       <SectionCard title="Entry / exit criteria">
         <TextArea
           label="Entry criteria"
@@ -46,42 +55,58 @@ export function TestingForm() {
         />
       </SectionCard>
 
-      <SectionCard title="Tests" count={testing.tests.length}>
-        <RepeatableList<Test>
-          items={testing.tests}
-          addLabel="Add test"
-          onAdd={() => dispatch({ type: 'ADD_TEST' })}
-          onRemove={i => dispatch({ type: 'DELETE_TEST', id: testing.tests[i].id })}
-          renderItem={(test) => (
-            <div>
-              <Badge className="mb-2">{test.id}</Badge>
-              <TextField
-                label="Description"
-                value={test.description}
-                onChange={v => dispatch({ type: 'UPDATE_TEST', id: test.id, patch: { description: v } })}
-              />
-              <LinkSelect
-                label="Verifies"
-                value={test.verifies}
-                options={verifiesOptions}
-                onChange={v => dispatch({ type: 'UPDATE_TEST', id: test.id, patch: { verifies: v as string } })}
-              />
-              <SelectField
-                label="Level"
-                value={test.level}
-                options={LEVEL_OPTIONS}
-                onChange={v => dispatch({ type: 'UPDATE_TEST', id: test.id, patch: { level: v as TestLevel } })}
-              />
-              <SelectField
-                label="Status"
-                value={test.status}
-                options={STATUS_OPTIONS}
-                onChange={v => dispatch({ type: 'UPDATE_TEST', id: test.id, patch: { status: v as TestStatus } })}
-              />
-            </div>
-          )}
-        />
-      </SectionCard>
+      <ListDetail<Test>
+        items={testing.tests}
+        getId={t => t.id}
+        getTitle={t => t.description}
+        getSearchText={t => `${t.id} ${t.description} ${t.verifies}`}
+        sorts={SORTS}
+        filters={FILTERS}
+        selectedId={state.selectedId}
+        onSelect={id => dispatch({ type: 'SELECT_ENTITY', view: 'testing', id })}
+        onAdd={() => dispatch({ type: 'ADD_TEST' })}
+        onDelete={id => dispatch({ type: 'DELETE_TEST', id })}
+        onDuplicate={id => dispatch({ type: 'DUPLICATE_TEST', id })}
+        addLabel="Add test"
+        searchLabel="Search tests"
+        emptyMessage="No tests yet. Add one to get started."
+        renderRow={test => (
+          <div className="flex min-w-0 items-center gap-2">
+            <Badge>{test.id}</Badge>
+            <span className="min-w-0 flex-1 truncate">{test.description || 'Untitled test'}</span>
+            {test.verifies && <Badge variant="outline">{test.verifies}</Badge>}
+            <span className="shrink-0 text-xs text-muted-foreground">{test.level}</span>
+            <span className="shrink-0 text-xs text-muted-foreground">{test.status}</span>
+          </div>
+        )}
+        renderInspector={test => (
+          <div>
+            <TextField
+              label="Description"
+              value={test.description}
+              onChange={v => dispatch({ type: 'UPDATE_TEST', id: test.id, patch: { description: v } })}
+            />
+            <LinkSelect
+              label="Verifies"
+              value={test.verifies}
+              options={verifiesOptions}
+              onChange={v => dispatch({ type: 'UPDATE_TEST', id: test.id, patch: { verifies: v as string } })}
+            />
+            <SelectField
+              label="Level"
+              value={test.level}
+              options={LEVEL_OPTIONS}
+              onChange={v => dispatch({ type: 'UPDATE_TEST', id: test.id, patch: { level: v as TestLevel } })}
+            />
+            <SelectField
+              label="Status"
+              value={test.status}
+              options={STATUS_OPTIONS}
+              onChange={v => dispatch({ type: 'UPDATE_TEST', id: test.id, patch: { status: v as TestStatus } })}
+            />
+          </div>
+        )}
+      />
     </div>
   );
 }

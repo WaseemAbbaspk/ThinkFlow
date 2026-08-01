@@ -1,84 +1,195 @@
+import { useState } from 'react';
 import { useProject } from '../state/projectStore';
 import { useConfirm } from '@/state/confirm';
-import { TextField, SelectField, LinkSelect, RepeatableList } from '../components/inputs';
-import { SectionCard } from '@/components/SectionCard';
+import { TextField, LinkSelect, RepeatableList, SelectField } from '../components/inputs';
+import { ListDetail } from '@/components/ListDetail';
+import { StageTabs } from '@/components/StageTabs';
+import { TabsContent } from '@/components/ui/tabs';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { subheadingClass } from '@/components/typography';
+import type { FilterGroup, SortOption } from '@/lib/listView';
 import type { Goal, UserStory, Criterion, Nfr, Priority } from '../model/types';
 
-const PRIORITY_OPTIONS = [
-  { value: 'Must', label: 'Must' },
-  { value: 'Should', label: 'Should' },
-  { value: 'Could', label: 'Could' },
+const PRIORITY_ORDER: Priority[] = ['Must', 'Should', 'Could'];
+const PRIORITY_OPTIONS = PRIORITY_ORDER.map(p => ({ value: p, label: p }));
+
+const byId = <T extends { id: string }>(a: T, b: T) =>
+  a.id.localeCompare(b.id, undefined, { numeric: true });
+
+const GOAL_SORTS: SortOption<Goal>[] = [
+  { id: 'id', label: 'ID', compare: byId },
+  { id: 'text', label: 'Text A–Z', compare: (a, b) => a.text.localeCompare(b.text) },
 ];
+
+const STORY_SORTS: SortOption<UserStory>[] = [
+  { id: 'id', label: 'ID', compare: byId },
+  { id: 'want', label: 'Want A–Z', compare: (a, b) => a.want.localeCompare(b.want) },
+  { id: 'priority', label: 'Priority',
+    compare: (a, b) => PRIORITY_ORDER.indexOf(a.priority) - PRIORITY_ORDER.indexOf(b.priority) },
+];
+
+const STORY_FILTERS: FilterGroup<UserStory>[] = [
+  { id: 'priority', label: 'Priority', options: PRIORITY_OPTIONS, matches: (s, v) => s.priority === v },
+  { id: 'goal', label: 'Goal',
+    options: [{ value: 'linked', label: 'Has goal' }, { value: 'unlinked', label: 'No goal' }],
+    matches: (s, v) => (v === 'linked' ? s.servesGoalId !== null : s.servesGoalId === null) },
+];
+
+const NFR_SORTS: SortOption<Nfr>[] = [
+  { id: 'id', label: 'ID', compare: byId },
+  { id: 'name', label: 'Name A–Z', compare: (a, b) => a.name.localeCompare(b.name) },
+];
+
+/** Assumptions, constraints and non-goals are bare string[] with no ids, so they
+    get an inline list rather than a ListDetail — sorting them would break the
+    index addressing they depend on. */
+function StringList({ label, addLabel, items, onChange }: {
+  label: string; addLabel: string; items: string[]; onChange: (next: string[]) => void;
+}) {
+  return (
+    <RepeatableList<string>
+      items={items}
+      addLabel={addLabel}
+      onAdd={() => onChange([...items, ''])}
+      onRemove={i => onChange(items.filter((_, idx) => idx !== i))}
+      renderItem={(item, i) => (
+        <TextField
+          label={label}
+          value={item}
+          onChange={v => onChange(items.map((x, idx) => (idx === i ? v : x)))}
+        />
+      )}
+    />
+  );
+}
 
 export function RequirementsForm() {
   const { state, dispatch } = useProject();
   const confirm = useConfirm();
   const project = state.project;
   const { requirements, tasks, testing } = project;
+  const [tab, setTab] = useState('goals');
 
-  function replace(patch: Partial<typeof project>) {
-    dispatch({ type: 'REPLACE_PROJECT', project: { ...project, ...patch } });
-  }
   function replaceRequirements(patch: Partial<typeof requirements>) {
-    replace({ requirements: { ...requirements, ...patch } });
+    dispatch({ type: 'REPLACE_PROJECT', project: { ...project, requirements: { ...requirements, ...patch } } });
   }
 
   const goalOptions = project.goals.map(g => ({ value: g.id, label: g.text || g.id }));
+  const select = (id: string | null) => dispatch({ type: 'SELECT_ENTITY', view: 'requirements', id });
+
+  async function deleteStory(id: string) {
+    const dependentCriteria = requirements.criteria.filter(c => c.storyId === id);
+    const dependentTasks = tasks.filter(t => t.tracesTo.includes(id));
+    if (dependentCriteria.length > 0 || dependentTasks.length > 0) {
+      const ok = await confirm({
+        title: `Delete ${id}?`,
+        description: `This also removes ${dependentCriteria.length} criteria and unlinks ${dependentTasks.length} tasks.`,
+        confirmLabel: 'Delete',
+      });
+      if (!ok) return;
+    }
+    dispatch({ type: 'DELETE_STORY', id });
+  }
+
+  async function deleteCriterion(id: string) {
+    const dependentTasks = tasks.filter(t => t.tracesTo.includes(id));
+    const dependentTests = testing.tests.filter(t => t.verifies === id);
+    if (dependentTasks.length > 0 || dependentTests.length > 0) {
+      const ok = await confirm({
+        title: `Delete ${id}?`,
+        description: `This unlinks ${dependentTasks.length} tasks and ${dependentTests.length} tests.`,
+        confirmLabel: 'Delete',
+      });
+      if (!ok) return;
+    }
+    dispatch({ type: 'DELETE_CRITERION', id });
+  }
+
+  const tabs = [
+    { value: 'goals', label: 'Goals', count: project.goals.length },
+    { value: 'stories', label: 'Stories', count: requirements.stories.length },
+    { value: 'nfrs', label: 'Non-functional', count: requirements.nfrs.length },
+    { value: 'assumptions', label: 'Assumptions', count: requirements.assumptions.length },
+    { value: 'constraints', label: 'Constraints', count: requirements.constraints.length },
+    { value: 'nonGoals', label: 'Non-goals', count: requirements.nonGoals.length },
+    { value: 'signoff', label: 'Signoff' },
+  ];
 
   return (
-    <div className="requirements-form">
-      <SectionCard title="Goals" count={project.goals.length}>
-        <RepeatableList<Goal>
+    <StageTabs tabs={tabs} value={tab} onValueChange={setTab}>
+      <TabsContent value="goals">
+        <ListDetail<Goal>
           items={project.goals}
-          addLabel="Add goal"
+          getId={g => g.id}
+          getTitle={g => g.text}
+          getSearchText={g => `${g.id} ${g.text} ${g.metric}`}
+          sorts={GOAL_SORTS}
+          selectedId={state.selectedId}
+          onSelect={select}
           onAdd={() => dispatch({ type: 'ADD_GOAL' })}
-          onRemove={i => dispatch({ type: 'DELETE_GOAL', id: project.goals[i].id })}
-          renderItem={(item, i) => (
-            <>
-              <Badge className="mb-2">{item.id}</Badge>
+          onDelete={id => dispatch({ type: 'DELETE_GOAL', id })}
+          addLabel="Add goal"
+          searchLabel="Search goals"
+          emptyMessage="No goals yet. Add one to get started."
+          renderRow={goal => (
+            <div className="flex min-w-0 items-center gap-2">
+              <Badge>{goal.id}</Badge>
+              <span className="min-w-0 flex-1 truncate">{goal.text || 'Untitled goal'}</span>
+              {goal.metric && <span className="shrink-0 text-xs text-muted-foreground">{goal.metric}</span>}
+            </div>
+          )}
+          renderInspector={goal => (
+            <div>
               <TextField
                 label="Text"
-                value={item.text}
-                onChange={v => replace({
-                  goals: project.goals.map((g, idx) => idx === i ? { ...g, text: v } : g),
-                })}
+                value={goal.text}
+                onChange={v => dispatch({ type: 'UPDATE_GOAL', id: goal.id, patch: { text: v } })}
               />
               <TextField
                 label="Metric"
-                value={item.metric}
-                onChange={v => replace({
-                  goals: project.goals.map((g, idx) => idx === i ? { ...g, metric: v } : g),
-                })}
+                value={goal.metric}
+                onChange={v => dispatch({ type: 'UPDATE_GOAL', id: goal.id, patch: { metric: v } })}
               />
-            </>
+            </div>
           )}
         />
-      </SectionCard>
+      </TabsContent>
 
-      <SectionCard title="Stories" count={requirements.stories.length}>
-        <RepeatableList<UserStory>
+      <TabsContent value="stories">
+        <ListDetail<UserStory>
           items={requirements.stories}
-          addLabel="Add story"
+          getId={s => s.id}
+          getTitle={s => s.want}
+          getSearchText={s => `${s.id} ${s.role} ${s.want} ${s.benefit}`}
+          sorts={STORY_SORTS}
+          filters={STORY_FILTERS}
+          selectedId={state.selectedId}
+          onSelect={select}
           onAdd={() => dispatch({ type: 'ADD_STORY' })}
-          onRemove={async i => {
-            const story = requirements.stories[i];
-            const dependentCriteria = requirements.criteria.filter(c => c.storyId === story.id);
-            const dependentTasks = tasks.filter(t => t.tracesTo.includes(story.id));
-            if (dependentCriteria.length > 0 || dependentTasks.length > 0) {
-              const ok = await confirm({
-                title: `Delete ${story.id}?`,
-                description: `This also removes ${dependentCriteria.length} criteria and unlinks ${dependentTasks.length} tasks.`,
-                confirmLabel: 'Delete',
-              });
-              if (!ok) return;
-            }
-            dispatch({ type: 'DELETE_STORY', id: story.id });
+          onDelete={deleteStory}
+          onDuplicate={id => dispatch({ type: 'DUPLICATE_STORY', id })}
+          addLabel="Add story"
+          searchLabel="Search stories"
+          emptyMessage="No stories yet. Add one to get started."
+          renderRow={story => {
+            const count = requirements.criteria.filter(c => c.storyId === story.id).length;
+            return (
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <div className="flex items-center gap-2">
+                  <Badge>{story.id}</Badge>
+                  <span className="min-w-0 flex-1 truncate font-medium">{story.want || 'Untitled story'}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{story.priority}</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-1">
+                  {story.servesGoalId && <Badge variant="outline">{story.servesGoalId}</Badge>}
+                  <span className="text-xs text-muted-foreground">{count} criteria</span>
+                </div>
+              </div>
+            );
           }}
-          renderItem={(story) => (
+          renderInspector={story => (
             <div>
-              <Badge className="mb-2">{story.id}</Badge>
               <TextField
                 label="Role"
                 value={story.role}
@@ -105,8 +216,7 @@ export function RequirementsForm() {
                 value={story.servesGoalId ?? ''}
                 options={goalOptions}
                 onChange={v => dispatch({
-                  type: 'UPDATE_STORY', id: story.id,
-                  patch: { servesGoalId: (v as string) || null },
+                  type: 'UPDATE_STORY', id: story.id, patch: { servesGoalId: (v as string) || null },
                 })}
               />
 
@@ -115,22 +225,11 @@ export function RequirementsForm() {
                 items={requirements.criteria.filter(c => c.storyId === story.id)}
                 addLabel="Add criterion"
                 onAdd={() => dispatch({ type: 'ADD_CRITERION', storyId: story.id })}
-                onRemove={async i => {
+                onRemove={i => {
                   const storyCriteria = requirements.criteria.filter(c => c.storyId === story.id);
-                  const criterion = storyCriteria[i];
-                  const dependentTasks = tasks.filter(t => t.tracesTo.includes(criterion.id));
-                  const dependentTests = testing.tests.filter(t => t.verifies === criterion.id);
-                  if (dependentTasks.length > 0 || dependentTests.length > 0) {
-                    const ok = await confirm({
-                      title: `Delete ${criterion.id}?`,
-                      description: `This unlinks ${dependentTasks.length} tasks and ${dependentTests.length} tests.`,
-                      confirmLabel: 'Delete',
-                    });
-                    if (!ok) return;
-                  }
-                  dispatch({ type: 'DELETE_CRITERION', id: criterion.id });
+                  void deleteCriterion(storyCriteria[i].id);
                 }}
-                renderItem={(criterion) => (
+                renderItem={criterion => (
                   <div>
                     <Badge className="mb-2">{criterion.id}</Badge>
                     <TextField
@@ -144,106 +243,87 @@ export function RequirementsForm() {
             </div>
           )}
         />
-      </SectionCard>
+      </TabsContent>
 
-      <SectionCard title="Non-functional requirements" count={requirements.nfrs.length}>
-        <RepeatableList<Nfr>
+      <TabsContent value="nfrs">
+        <ListDetail<Nfr>
           items={requirements.nfrs}
-          addLabel="Add NFR"
+          getId={n => n.id}
+          getTitle={n => n.name}
+          getSearchText={n => `${n.id} ${n.name} ${n.target}`}
+          sorts={NFR_SORTS}
+          selectedId={state.selectedId}
+          onSelect={select}
           onAdd={() => dispatch({ type: 'ADD_NFR' })}
-          onRemove={i => dispatch({ type: 'DELETE_NFR', id: requirements.nfrs[i].id })}
-          renderItem={(item, i) => (
-            <>
-              <Badge className="mb-2">{item.id}</Badge>
+          onDelete={id => dispatch({ type: 'DELETE_NFR', id })}
+          addLabel="Add NFR"
+          searchLabel="Search NFRs"
+          emptyMessage="No non-functional requirements yet."
+          renderRow={nfr => (
+            <div className="flex min-w-0 items-center gap-2">
+              <Badge>{nfr.id}</Badge>
+              <span className="min-w-0 flex-1 truncate">{nfr.name || 'Untitled NFR'}</span>
+              {nfr.target && <span className="shrink-0 text-xs text-muted-foreground">{nfr.target}</span>}
+            </div>
+          )}
+          renderInspector={nfr => (
+            <div>
               <TextField
                 label="Name"
-                value={item.name}
-                onChange={v => replaceRequirements({
-                  nfrs: requirements.nfrs.map((n, idx) => idx === i ? { ...n, name: v } : n),
-                })}
+                value={nfr.name}
+                onChange={v => dispatch({ type: 'UPDATE_NFR', id: nfr.id, patch: { name: v } })}
               />
               <TextField
                 label="Target"
-                value={item.target}
-                onChange={v => replaceRequirements({
-                  nfrs: requirements.nfrs.map((n, idx) => idx === i ? { ...n, target: v } : n),
-                })}
+                value={nfr.target}
+                onChange={v => dispatch({ type: 'UPDATE_NFR', id: nfr.id, patch: { target: v } })}
               />
-            </>
+            </div>
           )}
         />
-      </SectionCard>
+      </TabsContent>
 
-      <SectionCard title="Assumptions" count={requirements.assumptions.length}>
-        <RepeatableList<string>
-          items={requirements.assumptions}
+      <TabsContent value="assumptions">
+        <StringList
+          label="Assumption"
           addLabel="Add assumption"
-          onAdd={() => replaceRequirements({ assumptions: [...requirements.assumptions, ''] })}
-          onRemove={i => replaceRequirements({ assumptions: requirements.assumptions.filter((_, idx) => idx !== i) })}
-          renderItem={(item, i) => (
-            <TextField
-              label="Assumption"
-              value={item}
-              onChange={v => replaceRequirements({
-                assumptions: requirements.assumptions.map((a, idx) => idx === i ? v : a),
-              })}
-            />
-          )}
+          items={requirements.assumptions}
+          onChange={next => replaceRequirements({ assumptions: next })}
         />
-      </SectionCard>
+      </TabsContent>
 
-      <SectionCard title="Constraints" count={requirements.constraints.length}>
-        <RepeatableList<string>
-          items={requirements.constraints}
+      <TabsContent value="constraints">
+        <StringList
+          label="Constraint"
           addLabel="Add constraint"
-          onAdd={() => replaceRequirements({ constraints: [...requirements.constraints, ''] })}
-          onRemove={i => replaceRequirements({ constraints: requirements.constraints.filter((_, idx) => idx !== i) })}
-          renderItem={(item, i) => (
-            <TextField
-              label="Constraint"
-              value={item}
-              onChange={v => replaceRequirements({
-                constraints: requirements.constraints.map((c, idx) => idx === i ? v : c),
-              })}
-            />
-          )}
+          items={requirements.constraints}
+          onChange={next => replaceRequirements({ constraints: next })}
         />
-      </SectionCard>
+      </TabsContent>
 
-      <SectionCard title="Non-goals" count={requirements.nonGoals.length}>
-        <RepeatableList<string>
-          items={requirements.nonGoals}
+      <TabsContent value="nonGoals">
+        <StringList
+          label="Non-goal"
           addLabel="Add non-goal"
-          onAdd={() => replaceRequirements({ nonGoals: [...requirements.nonGoals, ''] })}
-          onRemove={i => replaceRequirements({ nonGoals: requirements.nonGoals.filter((_, idx) => idx !== i) })}
-          renderItem={(item, i) => (
-            <TextField
-              label="Non-goal"
-              value={item}
-              onChange={v => replaceRequirements({
-                nonGoals: requirements.nonGoals.map((g, idx) => idx === i ? v : g),
-              })}
-            />
-          )}
+          items={requirements.nonGoals}
+          onChange={next => replaceRequirements({ nonGoals: next })}
         />
-      </SectionCard>
+      </TabsContent>
 
-      <SectionCard title="Signoff">
-        <TextField
-          label="Signed off by"
-          value={requirements.signoff?.by ?? ''}
-          onChange={v => replaceRequirements({
-            signoff: { by: v, date: requirements.signoff?.date ?? '' },
-          })}
-        />
-        <TextField
-          label="Signoff date"
-          value={requirements.signoff?.date ?? ''}
-          onChange={v => replaceRequirements({
-            signoff: { by: requirements.signoff?.by ?? '', date: v },
-          })}
-        />
-      </SectionCard>
-    </div>
+      <TabsContent value="signoff">
+        <Card className="max-w-md p-4">
+          <TextField
+            label="Signed off by"
+            value={requirements.signoff?.by ?? ''}
+            onChange={v => replaceRequirements({ signoff: { by: v, date: requirements.signoff?.date ?? '' } })}
+          />
+          <TextField
+            label="Signoff date"
+            value={requirements.signoff?.date ?? ''}
+            onChange={v => replaceRequirements({ signoff: { by: requirements.signoff?.by ?? '', date: v } })}
+          />
+        </Card>
+      </TabsContent>
+    </StageTabs>
   );
 }
