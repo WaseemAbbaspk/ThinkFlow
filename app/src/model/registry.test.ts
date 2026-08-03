@@ -25,6 +25,17 @@ describe('entityIndex', () => {
     expect(idx.get('TEST-1')?.view).toBe('testing');
   });
 
+  /* Problems must be indexed or the store's prune would null selectedId the instant a
+     problem row is clicked, so the Vision inspector could never open. */
+  it('maps a vision problem to the vision view', () => {
+    const s = reducer(initialState(), {
+      type: 'PATCH_VISION',
+      patch: { problems: [{ id: 'PROB-1', text: 'Handoffs lose context' }] },
+    });
+    expect(entityIndex(s.project).get('PROB-1')?.view).toBe('vision');
+    expect(entityIndex(s.project).get('PROB-1')?.label).toBe('Handoffs lose context');
+  });
+
   it('falls back to the id when the entity has no text yet', () => {
     expect(entityIndex(seeded()).get('TASK-1')?.label).toBe('TASK-1');
   });

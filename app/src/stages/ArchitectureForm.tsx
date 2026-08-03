@@ -1,22 +1,35 @@
+import { useState } from 'react';
 import { useProject } from '../state/projectStore';
 import { TextField, TextArea, SelectField, LinkSelect, RepeatableList } from '../components/inputs';
-import { SectionCard } from '@/components/SectionCard';
+import { ListDetail } from '@/components/ListDetail';
+import { StageTabs } from '@/components/StageTabs';
+import { TabsContent } from '@/components/ui/tabs';
+import { Card } from '@/components/ui/card';
 import { DiagramView } from '@/components/DiagramView';
 import { Badge } from '@/components/ui/badge';
 import { subheadingClass } from '@/components/typography';
+import type { FilterGroup, SortOption } from '@/lib/listView';
 import type { Component, Flow, NfrConsideration, Adr, AdrOption, AdrStatus } from '../model/types';
 
-const ADR_STATUS_OPTIONS = [
-  { value: 'Proposed', label: 'Proposed' },
-  { value: 'Accepted', label: 'Accepted' },
-  { value: 'Superseded', label: 'Superseded' },
-  { value: 'Deprecated', label: 'Deprecated' },
+const ADR_STATUSES: AdrStatus[] = ['Proposed', 'Accepted', 'Superseded', 'Deprecated'];
+const ADR_STATUS_OPTIONS = ADR_STATUSES.map(s => ({ value: s, label: s }));
+
+const ADR_SORTS: SortOption<Adr>[] = [
+  { id: 'id', label: 'ID', compare: (a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }) },
+  { id: 'title', label: 'Title A–Z', compare: (a, b) => a.title.localeCompare(b.title) },
+  { id: 'status', label: 'Status',
+    compare: (a, b) => ADR_STATUSES.indexOf(a.status) - ADR_STATUSES.indexOf(b.status) },
+];
+
+const ADR_FILTERS: FilterGroup<Adr>[] = [
+  { id: 'status', label: 'Status', options: ADR_STATUS_OPTIONS, matches: (a, v) => a.status === v },
 ];
 
 export function ArchitectureForm() {
   const { state, dispatch } = useProject();
   const project = state.project;
   const { architecture, requirements } = project;
+  const [tab, setTab] = useState('overview');
 
   function replace(patch: Partial<typeof project>) {
     dispatch({ type: 'REPLACE_PROJECT', project: { ...project, ...patch } });
@@ -24,6 +37,12 @@ export function ArchitectureForm() {
   function replaceArch(patch: Partial<typeof architecture>) {
     replace({ architecture: { ...architecture, ...patch } });
   }
+  /** Every ADR edit is keyed by id, never by array position — the list is sortable. */
+  function patchAdr(id: string, patch: Partial<Adr>) {
+    replaceArch({ adrs: architecture.adrs.map(a => (a.id === id ? { ...a, ...patch } : a)) });
+  }
+
+  const select = (id: string | null) => dispatch({ type: 'SELECT_ENTITY', view: 'architecture', id });
 
   const adrOptions = architecture.adrs.map(a => ({ value: a.id, label: a.title || a.id }));
   const relatesToOptions = [
@@ -32,38 +51,55 @@ export function ArchitectureForm() {
     ...requirements.nfrs.map(n => ({ value: n.id, label: n.id })),
   ];
 
+  const tabs = [
+    { value: 'overview', label: 'Overview' },
+    { value: 'diagrams', label: 'Diagrams' },
+    { value: 'components', label: 'Components', count: architecture.components.length },
+    { value: 'flows', label: 'Key flows', count: architecture.keyFlows.length },
+    { value: 'nfrs', label: 'NFR considerations', count: architecture.nfrConsiderations.length },
+    { value: 'adrs', label: 'ADRs', count: architecture.adrs.length },
+  ];
+
   return (
-    <div className="architecture-form">
-      <SectionCard title="Overview">
-        <TextArea
-          label="Overview"
-          value={architecture.overview}
-          onChange={v => replaceArch({ overview: v })}
-        />
-      </SectionCard>
+    <StageTabs tabs={tabs} value={tab} onValueChange={setTab}>
+      <TabsContent value="overview">
+        <Card className="p-4">
+          <TextArea
+            label="Overview"
+            value={architecture.overview}
+            onChange={v => replaceArch({ overview: v })}
+          />
+        </Card>
+      </TabsContent>
 
-      <SectionCard title="Diagrams">
-        <TextArea
-          label="Context diagram (Mermaid)"
-          value={architecture.contextDiagram}
-          onChange={v => replaceArch({ contextDiagram: v })}
-        />
-        <DiagramView source={architecture.contextDiagram} label="Context diagram" />
+      <TabsContent value="diagrams">
+        <Card className="p-4">
+          <TextArea
+            label="Context diagram (Mermaid)"
+            value={architecture.contextDiagram}
+            onChange={v => replaceArch({ contextDiagram: v })}
+          />
+          <DiagramView source={architecture.contextDiagram} label="Context diagram" />
 
-        <TextArea
-          label="Component diagram (Mermaid)"
-          value={architecture.componentDiagram}
-          onChange={v => replaceArch({ componentDiagram: v })}
-        />
-        <DiagramView source={architecture.componentDiagram} label="Component diagram" />
-      </SectionCard>
+          <TextArea
+            label="Component diagram (Mermaid)"
+            value={architecture.componentDiagram}
+            onChange={v => replaceArch({ componentDiagram: v })}
+          />
+          <DiagramView source={architecture.componentDiagram} label="Component diagram" />
+        </Card>
+      </TabsContent>
 
-      <SectionCard title="Components" count={architecture.components.length}>
+      <TabsContent value="components">
         <RepeatableList<Component>
           items={architecture.components}
           addLabel="Add component"
-          onAdd={() => replaceArch({ components: [...architecture.components, { name: '', responsibility: '', adrIds: [] }] })}
-          onRemove={i => replaceArch({ components: architecture.components.filter((_, idx) => idx !== i) })}
+          onAdd={() => replaceArch({
+            components: [...architecture.components, { name: '', responsibility: '', adrIds: [] }],
+          })}
+          onRemove={i => replaceArch({
+            components: architecture.components.filter((_, idx) => idx !== i),
+          })}
           renderItem={(item, i) => (
             <>
               <TextField
@@ -92,9 +128,9 @@ export function ArchitectureForm() {
             </>
           )}
         />
-      </SectionCard>
+      </TabsContent>
 
-      <SectionCard title="Key flows" count={architecture.keyFlows.length}>
+      <TabsContent value="flows">
         <RepeatableList<Flow>
           items={architecture.keyFlows}
           addLabel="Add key flow"
@@ -119,14 +155,18 @@ export function ArchitectureForm() {
             </>
           )}
         />
-      </SectionCard>
+      </TabsContent>
 
-      <SectionCard title="NFR considerations" count={architecture.nfrConsiderations.length}>
+      <TabsContent value="nfrs">
         <RepeatableList<NfrConsideration>
           items={architecture.nfrConsiderations}
           addLabel="Add NFR consideration"
-          onAdd={() => replaceArch({ nfrConsiderations: [...architecture.nfrConsiderations, { concern: '', approach: '' }] })}
-          onRemove={i => replaceArch({ nfrConsiderations: architecture.nfrConsiderations.filter((_, idx) => idx !== i) })}
+          onAdd={() => replaceArch({
+            nfrConsiderations: [...architecture.nfrConsiderations, { concern: '', approach: '' }],
+          })}
+          onRemove={i => replaceArch({
+            nfrConsiderations: architecture.nfrConsiderations.filter((_, idx) => idx !== i),
+          })}
           renderItem={(item, i) => (
             <>
               <TextField
@@ -146,118 +186,103 @@ export function ArchitectureForm() {
             </>
           )}
         />
-      </SectionCard>
+      </TabsContent>
 
-      <SectionCard title="Architecture decision records" count={architecture.adrs.length}>
-        <RepeatableList<Adr>
+      <TabsContent value="adrs">
+        <ListDetail<Adr>
           items={architecture.adrs}
-          addLabel="Add ADR"
+          getId={a => a.id}
+          getTitle={a => a.title}
+          getSearchText={a => `${a.id} ${a.title} ${a.status} ${a.decision}`}
+          sorts={ADR_SORTS}
+          filters={ADR_FILTERS}
+          selectedId={state.selectedId}
+          onSelect={select}
           onAdd={() => dispatch({ type: 'ADD_ADR' })}
-          onRemove={i => dispatch({ type: 'DELETE_ADR', id: architecture.adrs[i].id })}
-          renderItem={(adr) => (
+          onDelete={id => dispatch({ type: 'DELETE_ADR', id })}
+          addLabel="Add ADR"
+          searchLabel="Search ADRs"
+          emptyMessage="No ADRs yet. Add one to record a decision."
+          renderRow={adr => (
+            <div className="flex min-w-0 items-center gap-2">
+              <Badge>{adr.id}</Badge>
+              <span className="min-w-0 flex-1 truncate font-medium">{adr.title || 'Untitled ADR'}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">{adr.status}</span>
+            </div>
+          )}
+          renderInspector={adr => (
             <div>
-              <Badge className="mb-2">{adr.id}</Badge>
               <TextField
                 label="Title"
                 value={adr.title}
-                onChange={v => replaceArch({
-                  adrs: architecture.adrs.map(a => a.id === adr.id ? { ...a, title: v } : a),
-                })}
+                onChange={v => patchAdr(adr.id, { title: v })}
               />
               <SelectField
                 label="Status"
                 value={adr.status}
                 options={ADR_STATUS_OPTIONS}
-                onChange={v => replaceArch({
-                  adrs: architecture.adrs.map(a => a.id === adr.id ? { ...a, status: v as AdrStatus } : a),
-                })}
+                onChange={v => patchAdr(adr.id, { status: v as AdrStatus })}
               />
-              <TextField
-                label="Date"
-                value={adr.date}
-                onChange={v => replaceArch({
-                  adrs: architecture.adrs.map(a => a.id === adr.id ? { ...a, date: v } : a),
-                })}
-              />
+              <TextField label="Date" value={adr.date} onChange={v => patchAdr(adr.id, { date: v })} />
               <TextField
                 label="Deciders"
                 value={adr.deciders}
-                onChange={v => replaceArch({
-                  adrs: architecture.adrs.map(a => a.id === adr.id ? { ...a, deciders: v } : a),
-                })}
+                onChange={v => patchAdr(adr.id, { deciders: v })}
               />
               <LinkSelect
                 label="Relates to"
                 multiple
                 value={adr.relatesTo}
                 options={relatesToOptions}
-                onChange={v => replaceArch({
-                  adrs: architecture.adrs.map(a => a.id === adr.id ? { ...a, relatesTo: v as string[] } : a),
-                })}
+                onChange={v => patchAdr(adr.id, { relatesTo: v as string[] })}
               />
               <TextArea
                 label="Context"
                 value={adr.context}
-                onChange={v => replaceArch({
-                  adrs: architecture.adrs.map(a => a.id === adr.id ? { ...a, context: v } : a),
-                })}
+                onChange={v => patchAdr(adr.id, { context: v })}
               />
               <TextArea
                 label="Decision"
                 value={adr.decision}
-                onChange={v => replaceArch({
-                  adrs: architecture.adrs.map(a => a.id === adr.id ? { ...a, decision: v } : a),
-                })}
+                onChange={v => patchAdr(adr.id, { decision: v })}
               />
               <TextArea
                 label="Rationale"
                 value={adr.rationale}
-                onChange={v => replaceArch({
-                  adrs: architecture.adrs.map(a => a.id === adr.id ? { ...a, rationale: v } : a),
-                })}
+                onChange={v => patchAdr(adr.id, { rationale: v })}
               />
 
               <h4 className={subheadingClass}>Options</h4>
               <RepeatableList<AdrOption>
                 items={adr.options}
                 addLabel="Add option"
-                onAdd={() => replaceArch({
-                  adrs: architecture.adrs.map(a => a.id === adr.id
-                    ? { ...a, options: [...a.options, { name: '', pros: '', cons: '' }] }
-                    : a),
+                onAdd={() => patchAdr(adr.id, {
+                  options: [...adr.options, { name: '', pros: '', cons: '' }],
                 })}
-                onRemove={oi => replaceArch({
-                  adrs: architecture.adrs.map(a => a.id === adr.id
-                    ? { ...a, options: a.options.filter((_, idx) => idx !== oi) }
-                    : a),
+                onRemove={oi => patchAdr(adr.id, {
+                  options: adr.options.filter((_, idx) => idx !== oi),
                 })}
                 renderItem={(option, oi) => (
                   <>
                     <TextField
                       label="Name"
                       value={option.name}
-                      onChange={v => replaceArch({
-                        adrs: architecture.adrs.map(a => a.id === adr.id
-                          ? { ...a, options: a.options.map((o, idx) => idx === oi ? { ...o, name: v } : o) }
-                          : a),
+                      onChange={v => patchAdr(adr.id, {
+                        options: adr.options.map((o, idx) => idx === oi ? { ...o, name: v } : o),
                       })}
                     />
                     <TextArea
                       label="Pros"
                       value={option.pros}
-                      onChange={v => replaceArch({
-                        adrs: architecture.adrs.map(a => a.id === adr.id
-                          ? { ...a, options: a.options.map((o, idx) => idx === oi ? { ...o, pros: v } : o) }
-                          : a),
+                      onChange={v => patchAdr(adr.id, {
+                        options: adr.options.map((o, idx) => idx === oi ? { ...o, pros: v } : o),
                       })}
                     />
                     <TextArea
                       label="Cons"
                       value={option.cons}
-                      onChange={v => replaceArch({
-                        adrs: architecture.adrs.map(a => a.id === adr.id
-                          ? { ...a, options: a.options.map((o, idx) => idx === oi ? { ...o, cons: v } : o) }
-                          : a),
+                      onChange={v => patchAdr(adr.id, {
+                        options: adr.options.map((o, idx) => idx === oi ? { ...o, cons: v } : o),
                       })}
                     />
                   </>
@@ -267,28 +292,22 @@ export function ArchitectureForm() {
               <TextArea
                 label="Consequences (positive)"
                 value={adr.consequencesPositive}
-                onChange={v => replaceArch({
-                  adrs: architecture.adrs.map(a => a.id === adr.id ? { ...a, consequencesPositive: v } : a),
-                })}
+                onChange={v => patchAdr(adr.id, { consequencesPositive: v })}
               />
               <TextArea
                 label="Consequences (tradeoffs)"
                 value={adr.consequencesTradeoffs}
-                onChange={v => replaceArch({
-                  adrs: architecture.adrs.map(a => a.id === adr.id ? { ...a, consequencesTradeoffs: v } : a),
-                })}
+                onChange={v => patchAdr(adr.id, { consequencesTradeoffs: v })}
               />
               <TextArea
                 label="Follow-ups"
                 value={adr.followUps}
-                onChange={v => replaceArch({
-                  adrs: architecture.adrs.map(a => a.id === adr.id ? { ...a, followUps: v } : a),
-                })}
+                onChange={v => patchAdr(adr.id, { followUps: v })}
               />
             </div>
           )}
         />
-      </SectionCard>
-    </div>
+      </TabsContent>
+    </StageTabs>
   );
 }
