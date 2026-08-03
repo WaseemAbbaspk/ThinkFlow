@@ -196,7 +196,7 @@ export function TraceabilityView() {
           label="Traceability chain"
           onNodeClick={id => {
             const target = entityIndex(project).get(id);
-            if (target) dispatch({ type: 'SET_VIEW', view: target.view });
+            if (target) dispatch({ type: 'SELECT_ENTITY', view: target.view, id: target.id });
           }}
         />
       </SectionCard>
