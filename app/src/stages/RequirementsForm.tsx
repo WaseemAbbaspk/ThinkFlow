@@ -3,6 +3,7 @@ import { useProject } from '../state/projectStore';
 import { useConfirm } from '@/state/confirm';
 import { TextField, LinkSelect, RepeatableList, SelectField } from '../components/inputs';
 import { ListDetail } from '@/components/ListDetail';
+import { StringList } from '@/components/StringList';
 import { StageTabs } from '@/components/StageTabs';
 import { TabsContent } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
@@ -40,29 +41,6 @@ const NFR_SORTS: SortOption<Nfr>[] = [
   { id: 'id', label: 'ID', compare: byId },
   { id: 'name', label: 'Name A–Z', compare: (a, b) => a.name.localeCompare(b.name) },
 ];
-
-/** Assumptions, constraints and non-goals are bare string[] with no ids, so they
-    get an inline list rather than a ListDetail — sorting them would break the
-    index addressing they depend on. */
-function StringList({ label, addLabel, items, onChange }: {
-  label: string; addLabel: string; items: string[]; onChange: (next: string[]) => void;
-}) {
-  return (
-    <RepeatableList<string>
-      items={items}
-      addLabel={addLabel}
-      onAdd={() => onChange([...items, ''])}
-      onRemove={i => onChange(items.filter((_, idx) => idx !== i))}
-      renderItem={(item, i) => (
-        <TextField
-          label={label}
-          value={item}
-          onChange={v => onChange(items.map((x, idx) => (idx === i ? v : x)))}
-        />
-      )}
-    />
-  );
-}
 
 export function RequirementsForm() {
   const { state, dispatch } = useProject();

@@ -17,6 +17,7 @@ export function entityIndex(project: Project): Map<string, EntityLocation> {
     if (id) index.set(id, { id, view, label: text.trim() || id });
   };
 
+  for (const p of project.vision.problems) add(p.id, 'vision', p.text);
   for (const g of project.goals) add(g.id, 'requirements', g.text);
   for (const s of project.requirements.stories) add(s.id, 'requirements', s.want);
   for (const c of project.requirements.criteria) add(c.id, 'requirements', c.text);

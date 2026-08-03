@@ -18,7 +18,7 @@ import { ExportPanel } from '@/components/ExportPanel';
 
 /* Stages built on ListDetail need the full width for their inspector rail;
    the prose-shaped stages stay in a comfortable reading column. */
-const WIDE_VIEWS: View[] = ['requirements', 'tasks', 'testing'];
+const WIDE_VIEWS: View[] = ['vision', 'requirements', 'architecture', 'tasks', 'testing'];
 
 export function AppShell() {
   const { state } = useProject();
