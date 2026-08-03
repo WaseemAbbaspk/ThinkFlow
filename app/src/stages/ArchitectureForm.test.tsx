@@ -29,10 +29,14 @@ async function openTab(name: RegExp) {
 }
 
 describe('ArchitectureForm', () => {
+  /* Queried by role, not label: Radix points each TabsContent's aria-labelledby at its
+     trigger, so the panel's accessible name is also "Overview" and getByLabelText would
+     match both it and the textarea. Only the textarea has role="textbox". */
   it('opens on the Overview tab', async () => {
     renderWithProviders(<ArchitectureForm />);
-    await userEvent.type(screen.getByLabelText('Overview'), 'Three services');
-    expect(screen.getByLabelText('Overview')).toHaveValue('Three services');
+    const field = screen.getByRole('textbox', { name: 'Overview' });
+    await userEvent.type(field, 'Three services');
+    expect(field).toHaveValue('Three services');
   });
 
   it('adds an ADR', async () => {
