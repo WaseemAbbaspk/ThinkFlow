@@ -1,20 +1,29 @@
 import React from 'react';
-import { it, expect, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ProjectProvider } from '../state/projectStore';
+import { ProjectProvider, useProject } from '../state/projectStore';
 import { ThemeProvider } from '@/state/theme';
 import { TraceabilityView } from './TraceabilityView';
 import { emptyProject, type Project } from '../model/types';
 
 /* This file is about the matrix, the gaps and the chain source — not about mermaid.
-   Mocking keeps the real 800 kB library (and its d3/cytoscape deps) out of jsdom. */
+   Mocking keeps the real 800 kB library (and its d3/cytoscape deps) out of jsdom.
+   render goes through a mock fn rather than a fixed value so the node-click test can
+   swap in an SVG that actually contains a .node to click. */
+const renderMock = vi.fn();
+
 vi.mock('mermaid', () => ({
   default: {
     initialize: vi.fn(),
-    render: vi.fn().mockResolvedValue({ svg: '<svg></svg>' }),
+    render: (...args: unknown[]) => renderMock(...args),
   },
 }));
+
+beforeEach(() => {
+  renderMock.mockReset();
+  renderMock.mockResolvedValue({ svg: '<svg></svg>' });
+});
 
 vi.mock('react-zoom-pan-pinch', () => ({
   TransformWrapper: ({ children }: { children: unknown }) =>
@@ -87,6 +96,31 @@ it('lists a gap message when a criterion is untested', () => {
   renderView(p);
   expect(screen.getByText(/AC-1\.1 has no test verifying it/i)).toBeInTheDocument();
   expect(screen.queryByText(/No gaps/i)).not.toBeInTheDocument();
+});
+
+/* Reads the store so a node click can be checked for BOTH halves of SELECT_ENTITY.
+   Asserting only the view would not discriminate: the previous SET_VIEW dispatch
+   navigated correctly too, and left selectedId null. */
+function StateProbe() {
+  const { state } = useProject();
+  return <p data-testid="probe">{`${state.view}:${state.selectedId ?? 'none'}`}</p>;
+}
+
+it('selects the entity behind a clicked diagram node, not just its stage', async () => {
+  renderMock.mockResolvedValue({ svg: '<svg><g class="node"><text>US-1</text></g></svg>' });
+  const { container } = render(
+    <ThemeProvider>
+      <ProjectProvider preload={tracedProject()}>
+        <TraceabilityView />
+        <StateProbe />
+      </ProjectProvider>
+    </ThemeProvider>,
+  );
+
+  await waitFor(() => expect(container.querySelector('.node')).toBeInTheDocument());
+  await userEvent.click(container.querySelector('.node text')!);
+
+  expect(screen.getByTestId('probe')).toHaveTextContent('requirements:US-1');
 });
 
 it('filters matrix rows by the filter box', async () => {
