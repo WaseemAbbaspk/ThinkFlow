@@ -40,10 +40,22 @@ export function AppShell() {
 
   return (
     <div className="flex h-full">
-      <aside className="hidden w-64 shrink-0 flex-col gap-4 overflow-y-auto border-r border-border bg-card p-4 md:flex">
-        <Brand />
-        <Sidebar />
-      </aside>
+      {/* An icon rail that expands on hover or keyboard focus. The wrapper holds a fixed
+          4rem slot in the layout and the panel floats above it, so expanding overlays the
+          content instead of reflowing the whole page. */}
+      <div className="group/rail relative hidden w-16 shrink-0 md:block">
+        <aside
+          className={cn(
+            'absolute inset-y-0 left-0 z-30 flex w-16 flex-col gap-4 overflow-y-auto overflow-x-hidden',
+            'border-r border-border bg-card p-3 transition-[width] duration-200',
+            'group-hover/rail:w-64 group-hover/rail:shadow-lg',
+            'focus-within:w-64 focus-within:shadow-lg',
+          )}
+        >
+          <Brand />
+          <Sidebar collapsible />
+        </aside>
+      </div>
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar saveState={saveState} onOpenPalette={() => setPaletteOpen(true)} />
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-6">
